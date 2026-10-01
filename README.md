@@ -1,7 +1,11 @@
 # Entnahme-Stresstest
 
+[![Deploy auf GitHub Pages](https://github.com/githubpat99/vermoegensplanung/actions/workflows/deploy.yml/badge.svg)](https://github.com/githubpat99/vermoegensplanung/actions/workflows/deploy.yml)
+
 Eigenständige, responsive Web-App zur Simulation und zum Vergleich von
 Entnahmestrategien während der Pensionierungsphase.
+
+**Live-Demo:** <https://githubpat99.github.io/vermoegensplanung/>
 
 > **Keine Anlageempfehlung.** Die App simuliert Strategien transparent und
 > vergleichbar und beantwortet die Frage: „Was wäre mit meinem Vermögen
@@ -37,6 +41,20 @@ npm run typecheck
 ```
 
 Voraussetzung: Node.js ≥ 18 (getestet mit Node 20).
+
+## Deployment
+
+Jeder Push auf `main` baut die App automatisch und veröffentlicht sie auf GitHub
+Pages (`.github/workflows/deploy.yml`):
+
+1. `npm ci` – Abhängigkeiten installieren
+2. `npm test` – Testsuite muss grün sein
+3. `npm run build` – Produktionsbuild nach `dist/`
+4. Deployment von `dist/` auf <https://githubpat99.github.io/vermoegensplanung/>
+
+Der Build verwendet relative Asset-Pfade (`base: './'`), damit er unter dem
+Unterpfad der Projekt-Seite funktioniert. Manuell auslösbar über
+**Actions → „Deploy auf GitHub Pages“ → Run workflow**.
 
 > **`index.html` kann nicht per Doppelklick geöffnet werden.** Sie ist das
 > Vite-Template und lädt `/src/main.tsx` (TypeScript/JSX), das erst kompiliert
