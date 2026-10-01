@@ -56,6 +56,11 @@ Der Build verwendet relative Asset-Pfade (`base: './'`), damit er unter dem
 Unterpfad der Projekt-Seite funktioniert. Manuell auslösbar über
 **Actions → „Deploy auf GitHub Pages“ → Run workflow**.
 
+> **Einmalige Einrichtung:** Unter *Settings → Pages → Build and deployment* muss
+> als **Source** die Option **„GitHub Actions“** gewählt sein. Der `GITHUB_TOKEN`
+> darf die Pages-Site nicht selbst anlegen – ohne diese Einstellung bricht der
+> Schritt „Pages konfigurieren“ mit `Resource not accessible by integration` ab.
+
 > **`index.html` kann nicht per Doppelklick geöffnet werden.** Sie ist das
 > Vite-Template und lädt `/src/main.tsx` (TypeScript/JSX), das erst kompiliert
 > werden muss. Auch der fertige Build in `dist/` benötigt einen Webserver,

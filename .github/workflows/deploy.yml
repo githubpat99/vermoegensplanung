@@ -1,5 +1,10 @@
 name: Deploy auf GitHub Pages
 
+# Voraussetzung: Im Repository muss GitHub Pages einmal aktiviert sein
+# (Settings -> Pages -> Build and deployment -> Source: "GitHub Actions").
+# Der GITHUB_TOKEN darf die Pages-Site nicht selbst anlegen; deshalb ist dieser
+# eine Klick eine einmalige manuelle Einrichtung.
+
 on:
   push:
     branches: [main]
@@ -22,12 +27,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Repository auschecken
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Node.js einrichten
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Abhängigkeiten installieren
@@ -44,12 +49,10 @@ jobs:
         run: touch dist/.nojekyll
 
       - name: Pages konfigurieren
-        uses: actions/configure-pages@v5
-        with:
-          enablement: true
+        uses: actions/configure-pages@v6
 
       - name: Build als Pages-Artefakt hochladen
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: dist
 
@@ -63,4 +66,4 @@ jobs:
     steps:
       - name: Auf GitHub Pages veröffentlichen
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
