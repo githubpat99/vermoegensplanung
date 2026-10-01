@@ -1,4 +1,5 @@
 import type { SimulationInput } from '../engine/types';
+import { formatChfInput } from './format';
 import { ReserveComposition } from './ReserveComposition';
 
 /** Unit in which the liquidity reserve is entered. */
@@ -92,9 +93,7 @@ export function ReserveInput({
               type="text"
               inputMode="numeric"
               aria-label="Reserve in CHF"
-              value={new Intl.NumberFormat('de-CH', { maximumFractionDigits: 0 }).format(
-                Math.round(input.liquidityReserve),
-              )}
+              value={formatChfInput(input.liquidityReserve)}
               onChange={(e) =>
                 onChange({ liquidityReserve: parseMoney(e.target.value, input.liquidityReserve) })
               }

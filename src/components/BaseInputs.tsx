@@ -1,16 +1,11 @@
 import type { SimulationInput } from '../engine/types';
+import { formatChfInput } from './format';
 
 interface BaseInputsProps {
   input: SimulationInput;
   onChange: (patch: Partial<SimulationInput>) => void;
   /** Hide the CHF prefix to keep the row compact. */
   compact?: boolean;
-}
-
-/** Format a whole-franc amount with Swiss thousand separators. */
-function formatMoney(value: number): string {
-  if (!Number.isFinite(value)) return '';
-  return new Intl.NumberFormat('de-CH', { maximumFractionDigits: 0 }).format(Math.round(value));
 }
 
 /** Parse a formatted money string back to a number. */
@@ -39,7 +34,7 @@ function MoneyField({
         <input
           type="text"
           inputMode="numeric"
-          value={formatMoney(value)}
+          value={formatChfInput(value)}
           onChange={(e) => onChange(parseMoney(e.target.value, value))}
         />
       </span>

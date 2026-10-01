@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import App from '../App';
 import { STRATEGY_ORDER, strategyColor, strategyCard, reserveLabel } from '../components/strategyVisuals';
+import { CH_GROUP_SEPARATOR, formatChf, formatChfInput } from '../components/format';
 
 /**
  * Test group K – UI.
@@ -456,6 +457,17 @@ describe('K – UI', () => {
       expect(comparisonView).toContain('sofort verfügbar');
       expect(comparisonView).toContain('48’333');
       expect(comparisonView).toContain('96’667');
+    });
+
+    it('K56: die Tausendertrennung ist plattformunabhängig (typografischer Apostroph)', () => {
+      // `Intl` liefert für de-CH je nach ICU-Umgebung U+0027 oder U+2019.
+      // Die App normalisiert auf U+2019, damit Windows und CI identisch rendern.
+      expect(CH_GROUP_SEPARATOR).toBe('\u2019');
+      expect(formatChf(48_333)).toBe('48\u2019333');
+      expect(formatChf(1_228_300)).toBe('1\u2019228\u2019300');
+      expect(formatChfInput(145_000)).toBe('145\u2019000');
+      expect(formatChf(1_228_300)).not.toContain("'");
+      expect(html).not.toContain('1&#x27;228&#x27;300');
     });
   });
 });
