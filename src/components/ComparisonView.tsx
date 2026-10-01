@@ -25,6 +25,8 @@ interface ComparisonViewProps {
   scenarios: MarketScenario[];
   /** Apply a heatmap combination to the simulation view. */
   onApplyCombination: (equityWeight: number, reserveYears: number) => void;
+  /** Open the simulation result for a picked scenario/strategy combination. */
+  onOpenInSimulation: (opts: { scenarioId?: string; strategyId?: string }) => void;
 }
 
 type MobileBlock = 'table' | 'metrics';
@@ -42,6 +44,7 @@ export function ComparisonView({
   strategies,
   scenarios,
   onApplyCombination,
+  onOpenInSimulation,
 }: ComparisonViewProps) {
   const [mobileBlock, setMobileBlock] = useState<MobileBlock>('table');
   const [selectedEquity, setSelectedEquity] = useState<number>(0.8);
@@ -123,10 +126,19 @@ export function ComparisonView({
           </button>
         </div>
 
+        {reserveYears <= 0 && (
+          <p className="notice">
+            Die Reserve ist <strong>0 Jahresbedarfe</strong>. Ohne Reserve können die Auffüllregeln
+            nicht greifen: S1–S4 rechnen identisch und die Kennzahlen unterscheiden sich nicht.
+            Reserve in der „Ausgangslage“ erhöhen, um die Unterschiede zu sehen.
+          </p>
+        )}
+
         <div className={`cmp-block${mobileBlock === 'table' ? ' active' : ''}`}>
           <p className="hint matrix-reserve-note">
             Reserve für alle Strategien: <strong>{formatYears(reserveYears)} Jahresbedarfe</strong>{' '}
-            (CHF {formatChf(reserveChf)}) – ⅓ Geldmarkt, ⅔ Obligationen.
+            (CHF {formatChf(reserveChf)}) – ⅓ Geldmarkt, ⅔ Obligationen. Klick auf einen Wert öffnet
+            das Ergebnis in der Simulation.
           </p>
           <ScenarioMatrix
             scenarios={scenarios}
@@ -134,25 +146,39 @@ export function ComparisonView({
             columns={columns}
             selectedScenarioId={selectedScenarioId}
             onSelectScenario={setSelectedScenarioId}
+            onOpenScenario={(scenarioId, strategyId) =>
+              onOpenInSimulation({ scenarioId, strategyId })
+            }
           />
         </div>
 
         <div className={`cmp-block${mobileBlock === 'metrics' ? ' active' : ''}`}>
           <h3 className="sub-heading">Robustheits-Kennzahlen</h3>
-          <p className="hint">über alle {scenarios.length} Szenarien</p>
-          <RobustnessTable columns={columns} metrics={robustness} />
+          <p className="hint">
+            über alle {scenarios.length} Szenarien · Klick auf einen Wert öffnet die Strategie im
+            Ergebnis der Simulation
+          </p>
+          <RobustnessTable
+            columns={columns}
+            metrics={robustness}
+            onOpenStrategy={(strategyId) => onOpenInSimulation({ strategyId })}
+          />
         </div>
       </SectionPanel>
 
       <SectionPanel
-        title="Sensitivitätsanalyse"
-        subtitle={`Endvermögen (Durchschnitt aller ${scenarios.length} Szenarien)`}
+        title="Strategieraum"
+        subtitle={`Jede Kombination aus Aktienquote und Reserve ist eine eigene Strategie – Endvermögen im Durchschnitt aller ${scenarios.length} Szenarien`}
         icon={<IconShield size={22} />}
         tone="violet"
       >
         {/* Always visible – the heatmap has its own section and must not be
             hidden by the mobile view toggle of the comparison section. */}
         <div className="sensitivity-block">
+          <p className="hint">
+            Klick auf eine Zelle übernimmt die Kombination und springt direkt zum Ergebnis in der
+            Simulation. Die Auswahl bleibt für die Aufschlüsselung darunter erhalten.
+          </p>
           <div className="sensitivity-layout">
             <div className="sensitivity-grid">
               <SensitivityHeatmap
@@ -162,6 +188,8 @@ export function ComparisonView({
                 onSelect={(eq, ry) => {
                   setSelectedEquity(eq);
                   setSelectedReserve(ry);
+                  // One click: adopt the combination and jump to the result.
+                  onApplyCombination(eq, ry);
                 }}
               />
               <HeatmapLegend />

@@ -2,6 +2,7 @@ import type { MarketScenario } from '../engine/types';
 import type { SensitivityCell } from '../engine/sensitivity';
 import { formatChf } from './format';
 import { allocationLabel } from './SensitivityHeatmap';
+import { reserveLabel } from './strategyVisuals';
 
 interface SelectedCellPanelProps {
   cell: SensitivityCell | undefined;
@@ -14,20 +15,24 @@ function baseName(scenario: MarketScenario): string {
 }
 
 /**
- * Detail for the currently selected heatmap cell: the average across all
- * scenarios plus the per-scenario breakdown, and a button that copies the
- * combination into the simulation view.
+ * Detail for the currently selected heatmap cell: the strategy it stands for,
+ * the average across all scenarios plus the per-scenario breakdown, and a
+ * button that copies the combination into the simulation view.
  */
 export function SelectedCellPanel({ cell, scenarios, onApply }: SelectedCellPanelProps) {
   if (!cell) return null;
 
+  const strategy = `Strategie ${allocationLabel(cell.equityWeight)} · ${reserveLabel(cell.reserveYears)}`;
+
   return (
     <div className="selected-cell">
-      <h3 className="selected-cell-title">
-        {allocationLabel(cell.equityWeight)} · {cell.reserveYears}{' '}
-        {cell.reserveYears === 1 ? 'Jahresbedarf' : 'Jahresbedarfe'}
-      </h3>
-      <p className="hint">Durchschnitt über alle {scenarios.length} Szenarien</p>
+      <p className="selected-cell-kicker">Gewählte Strategie</p>
+      <h3 className="selected-cell-title">{strategy}</h3>
+      <p className="hint">
+        {allocationLabel(cell.equityWeight)} Aktien / {100 - Math.round(cell.equityWeight * 100)}{' '}
+        Obligationen, {reserveLabel(cell.reserveYears)} Reserve · Durchschnitt über alle{' '}
+        {scenarios.length} Szenarien
+      </p>
       <p className="selected-cell-value">{formatChf(cell.averageEnd)}</p>
 
       <table className="selected-cell-table">

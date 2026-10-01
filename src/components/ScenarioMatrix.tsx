@@ -11,6 +11,8 @@ interface ScenarioMatrixProps {
   columns: StrategyColumn[];
   selectedScenarioId: string;
   onSelectScenario: (id: string) => void;
+  /** Open one concrete scenario/strategy combination in the simulation. */
+  onOpenScenario: (scenarioId: string, strategyId: string) => void;
 }
 
 function periodOf(scenario: MarketScenario): string {
@@ -25,7 +27,8 @@ function baseName(scenario: MarketScenario): string {
 
 /**
  * End capital (CHF) for every scenario × strategy. The best value of each row
- * is highlighted; clicking a row selects the scenario for the detail chart.
+ * is highlighted; clicking a row selects the scenario, clicking a single value
+ * opens that combination in the simulation result.
  */
 export function ScenarioMatrix({
   scenarios,
@@ -33,6 +36,7 @@ export function ScenarioMatrix({
   columns,
   selectedScenarioId,
   onSelectScenario,
+  onOpenScenario,
 }: ScenarioMatrixProps) {
   return (
     <div className="table-scroll">
@@ -67,11 +71,19 @@ export function ScenarioMatrix({
                   </span>
                 </th>
                 {columns.map((c, i) => (
-                  <td
-                    key={c.id}
-                    className={values[i] === best ? 'num matrix-best' : 'num'}
-                  >
-                    {formatChf(values[i])}
+                  <td key={c.id} className={values[i] === best ? 'num matrix-best' : 'num'}>
+                    <button
+                      type="button"
+                      className="matrix-cell"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onOpenScenario(scenario.id, c.id);
+                      }}
+                      aria-label={`${baseName(scenario)} · ${c.id}: ${formatChf(values[i])} Endvermögen – öffnet das Ergebnis in der Simulation`}
+                      title={`${baseName(scenario)} · ${c.id} – Klick zeigt das Ergebnis in der Simulation`}
+                    >
+                      {formatChf(values[i])}
+                    </button>
                   </td>
                 ))}
               </tr>

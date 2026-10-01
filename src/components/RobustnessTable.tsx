@@ -6,13 +6,16 @@ import type { StrategyColumn } from './strategyVisuals';
 interface RobustnessTableProps {
   columns: StrategyColumn[];
   metrics: Record<string, RobustnessMetrics>;
+  /** Open the strategy in the simulation result. */
+  onOpenStrategy: (strategyId: string) => void;
 }
 
 /**
  * Robustness key figures per strategy across all scenarios.
- * Purely factual – no "best strategy" statement.
+ * Purely factual – no "best strategy" statement. Clicking a figure opens the
+ * strategy in the simulation result.
  */
-export function RobustnessTable({ columns, metrics }: RobustnessTableProps) {
+export function RobustnessTable({ columns, metrics, onOpenStrategy }: RobustnessTableProps) {
   const rows: { label: string; render: (m: RobustnessMetrics) => string }[] = [
     { label: 'Schlechtestes Ergebnis', render: (m) => formatChf(m.worstEnd) },
     { label: 'Ø Endvermögen', render: (m) => formatChf(m.averageEnd) },
@@ -42,7 +45,19 @@ export function RobustnessTable({ columns, metrics }: RobustnessTableProps) {
               <th scope="row" className="robustness-label">{row.label}</th>
               {columns.map((c) => (
                 <td key={c.id} className="num">
-                  {metrics[c.id] ? row.render(metrics[c.id]) : '–'}
+                  {metrics[c.id] ? (
+                    <button
+                      type="button"
+                      className="robustness-cell"
+                      onClick={() => onOpenStrategy(c.id)}
+                      aria-label={`${c.id} · ${row.label}: ${row.render(metrics[c.id])} – öffnet das Ergebnis in der Simulation`}
+                      title={`${c.id} – Klick zeigt das Ergebnis in der Simulation`}
+                    >
+                      {row.render(metrics[c.id])}
+                    </button>
+                  ) : (
+                    '–'
+                  )}
                 </td>
               ))}
             </tr>

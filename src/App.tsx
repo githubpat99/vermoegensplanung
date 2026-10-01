@@ -1,4 +1,4 @@
-import { useMemo, useState, type MouseEvent } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { buildStrategies, withParams } from './engine/strategies';
 import { normalizeEquityWeight, runSimulation } from './engine/simulation';
 import type { MarketScenario, SimulationInput, StrategyParams } from './engine/types';
@@ -46,15 +46,22 @@ function resolveScenario(base: MarketScenario, bondSequenceId: string): MarketSc
   return base.type === 'synthetic' ? withBondSequence(base, bondSequenceId) : base;
 }
 
-export default function App({ initialMode = 'simulation' }: { initialMode?: AppMode } = {}) {
+export default function App(
+  {
+    initialMode = 'simulation',
+    initialReserveYears = 2,
+  }: { initialMode?: AppMode; initialReserveYears?: number } = {},
+) {
   const [mode, setMode] = useState<AppMode>(initialMode);
   const [input, setInput] = useState<SimulationInput>({ ...REFERENCE_CASE });
-  const [reserve, setReserve] = useState<ReserveState>({ mode: 'years', years: 2 });
+  const [reserve, setReserve] = useState<ReserveState>({ mode: 'years', years: initialReserveYears });
   const [scenarioId, setScenarioId] = useState<string>(SCENARIO_BAD_YEARS.id);
   const [bondSequenceId, setBondSequenceId] = useState<string>(HISTORICAL_BOND_SEQUENCES[0].id);
   const [visibleIds, setVisibleIds] = useState<Set<string>>(new Set(ALL_IDS));
   const [detailStrategyId, setDetailStrategyId] = useState<string>('S2');
   const [userParams, setUserParams] = useState<Partial<StrategyParams>>({});
+  /** Counter: > 0 means "jump to the result area" was requested. */
+  const [showResults, setShowResults] = useState(0);
 
   // Effective reserve: derived from the chosen mode.
   const reserveChf =
@@ -153,14 +160,27 @@ export default function App({ initialMode = 'simulation' }: { initialMode?: AppM
     }));
     setReserve({ mode: 'years', years: reserveYears });
     setMode('simulation');
+    // Jump straight to the result: expand "Ergebnisse" and scroll to it once the
+    // simulation view has rendered.
+    setShowResults((n) => n + 1);
   };
 
-  // Navigation inside the simulation view: expand the target section and scroll.
-  const goTo = (id: string) => (e: MouseEvent<HTMLAnchorElement>) => {
-    e.preventDefault();
-    const el = document.getElementById(id);
+  useEffect(() => {
+    if (mode !== 'simulation' || showResults === 0) return;
+    const el = document.getElementById('ergebnisse');
     if (el instanceof HTMLDetailsElement) el.open = true;
     el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [mode, showResults]);
+
+  /**
+   * Open the simulation result for a concrete combination picked in the
+   * comparison view (matrix cell, key figure or heatmap cell).
+   */
+  const openInSimulation = (opts: { scenarioId?: string; strategyId?: string } = {}) => {
+    if (opts.scenarioId) setScenarioId(opts.scenarioId);
+    if (opts.strategyId) setDetailStrategyId(opts.strategyId);
+    setMode('simulation');
+    setShowResults((n) => n + 1);
   };
 
   return (
@@ -177,6 +197,7 @@ export default function App({ initialMode = 'simulation' }: { initialMode?: AppM
             strategies={strategies}
             scenarios={allScenarios}
             onApplyCombination={applyCombination}
+            onOpenInSimulation={openInSimulation}
           />
         </main>
       ) : mode === 'sources' ? (
@@ -193,15 +214,6 @@ export default function App({ initialMode = 'simulation' }: { initialMode?: AppM
         </main>
       ) : (
         <main>
-          <nav className="subnav" aria-label="Abschnitte">
-            <a href="#ausgangslage" onClick={goTo('ausgangslage')}>Ausgangslage</a>
-            <a href="#strategien" onClick={goTo('strategien')}>Strategien</a>
-            <a href="#szenario" onClick={goTo('szenario')}>Marktszenario</a>
-            <a href="#ergebnisse" className="nav-result" onClick={goTo('ergebnisse')}>Ergebnisse</a>
-            <a href="#einstellungen" onClick={goTo('einstellungen')}>Weitere Einstellungen</a>
-            <a href="#jahresdetail" onClick={goTo('jahresdetail')}>Jahresdetails</a>
-          </nav>
-
           <SectionPanel
             id="ausgangslage"
             title="Ausgangslage"

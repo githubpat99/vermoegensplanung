@@ -113,10 +113,8 @@ Drei Ansichten über die Tabs im Kopfbereich:
 Mobile-first, kartenbasiert, ohne Excel-Look. Aufbau:
 
 1. **App-Header** – App-Icon, Produktname, Kernfrage, Tabs und Info-Button.
-   Darunter die Abschnitts-Navigation **Ausgangslage · Strategien ·
-   Marktszenario · ERGEBNISSE · Weitere Einstellungen · Jahresdetails**;
-   „Ergebnisse“ ist abgesetzt hervorgehoben und steht immer direkt nach dem
-   Marktszenario.
+   Die Kacheln selbst sind der Einstieg; unter dem Header gibt es bewusst keine
+   Abschnitts-Navigation.
 2. **Ausgangslage** – Startvermögen, jährlicher Kapitalbedarf (mit CHF-Präfix),
    Aktien/Obligationen-Slider, Rebalancing-Schalter und Liquiditätsreserve
    (Angabe der Aufteilung 1/3 Geldmarkt / 2/3 Obligationen in CHF).
@@ -162,22 +160,26 @@ Ergebnisbereich.
 - **Robustheits-Kennzahlen** je Strategie: schlechtestes Ergebnis, Ø Endvermögen,
   Median, „Vermögen aufgebraucht“ (Anzahl von 5) und grösster Rückgang
   (Peak→Tief, in %).
-- **Sensitivitätsanalyse** – Heatmap des durchschnittlichen Endvermögens über
-  alle Szenarien für jede Kombination aus Aktienquote (100/0 … 60/40) und
-  Liquiditätsreserve (0–3 Jahresbedarfe); grün = höher, rot = niedriger.
-  Klick auf eine Zelle öffnet die Detailwerte aller 5 Szenarien.
-- **Ausgewähltes Feld** – zeigt die gewählte Kombination, den Durchschnitt und
-  die Aufschlüsselung je Szenario. Mit **„Diese Kombination in Simulation
-  anzeigen“** werden Aktienquote und Reserve übernommen und zur Simulation
-  gewechselt.
+- **Strategieraum** – Heatmap des durchschnittlichen Endvermögens über alle
+  Szenarien. Jede Zelle ist eine **eigene Strategie**: Zeile = Aktienquote
+  (100/0 … 60/40), Spalte = **Reserve in Jahresbedarfen** (0–3, Kurzform „0 J.“
+  … „3 J.“). Jede Zelle trägt ihren Strategienamen (z. B. „Strategie 80/20 ·
+  2 Jahresbedarfe“) als Label und Titel; grün = höher, rot = niedriger.
+  **Ein Klick auf eine Zelle** übernimmt die Kombination und springt direkt ins
+  Ergebnis: Die Simulation öffnet sich mit der gewählten Aktienquote und Reserve
+  und springt zur Kachel „Ergebnisse“.
+- **Gewählte Strategie** – zeigt die zuletzt gewählte Kombination
+  (Aktien/Obligationen, Reservehöhe), den Durchschnitt und die Aufschlüsselung je
+  Szenario; mit **„Diese Kombination in Simulation anzeigen“** lässt sie sich
+  erneut übernehmen.
 - Auf Mobilgeräten schaltet ein Segment-Control zwischen **Tabelle** und
-  **Kennzahlen** um. Die **Sensitivitätsanalyse** liegt in einer eigenen Kachel
-  und ist dort – unabhängig vom Ansicht-Schalter – immer sichtbar.
+  **Kennzahlen** um. Der **Strategieraum** liegt in einer eigenen Kachel und ist
+  dort – unabhängig vom Ansicht-Schalter – immer sichtbar.
 
 Die Kacheln sind aufklappbar, ohne Nummerierung und starten **alle
 eingeklappt**; auch die Szenario-Zeilen im Marktszenario sind zunächst
-zugeklappt. Die Navigation unter dem Header öffnet das gewählte Ziel.
-Reihenfolge (**S1–S4**) und Farben der Strategien bleiben in allen Ansichten stabil.
+zugeklappt. Reihenfolge (**S1–S4**) und Farben der Strategien bleiben in allen
+Ansichten stabil.
 Es gibt bewusst **keine Bewertung „beste Strategie“** – nur Zahlen und Kennzahlen.
 
 ## Architektur

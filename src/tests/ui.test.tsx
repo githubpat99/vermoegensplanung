@@ -109,24 +109,23 @@ describe('K – UI', () => {
       expect(html).toContain('Gegen welche Marktphase');
     });
 
-    it('K12b: die Navigation führt in der festgelegten Reihenfolge durch alle Abschnitte', () => {
-      const nav = html.match(/<nav class="subnav"[\s\S]*?<\/nav>/)?.[0] ?? '';
-      expect(nav).not.toBe('');
-      const labels = [...nav.matchAll(/<a [^>]*>([^<]+)<\/a>/g)].map((m) => m[1]);
-      expect(labels).toEqual([
-        'Ausgangslage',
-        'Strategien',
-        'Marktszenario',
-        'Ergebnisse',
-        'Weitere Einstellungen',
-        'Jahresdetails',
-      ]);
-      // „Ergebnisse“ steht direkt nach dem Marktszenario und ist hervorgehoben.
-      expect(nav).toMatch(/class="nav-result"[^>]*>Ergebnisse</);
-      expect(css).toMatch(/\.subnav a\.nav-result\s*\{/);
-      // Reihenfolge im Dokument: Ergebnisse folgt auf das Marktszenario.
-      expect(html.indexOf('id="szenario"')).toBeLessThan(html.indexOf('id="ergebnisse"'));
-      expect(html.indexOf('id="strategien"')).toBeLessThan(html.indexOf('id="szenario"'));
+    it('K12b: unter dem Header gibt es keine Abschnitts-Navigation – die Kacheln sind der Einstieg', () => {
+      expect(html).not.toContain('subnav');
+      expect(css).not.toContain('.subnav');
+      expect(html).not.toContain('nav-result');
+      // Die Reihenfolge im Dokument bleibt: Ausgangslage → Strategien →
+      // Marktszenario → Ergebnisse („Ergebnisse“ immer direkt danach) → …
+      const order = [
+        'id="ausgangslage"',
+        'id="strategien"',
+        'id="szenario"',
+        'id="ergebnisse"',
+        'id="einstellungen"',
+        'id="jahresdetail"',
+      ];
+      const positions = order.map((needle) => html.indexOf(needle));
+      expect(positions.every((p) => p > -1), order.join(' | ')).toBe(true);
+      expect([...positions].sort((a, b) => a - b)).toEqual(positions);
     });
 
     it('K13: jede Sektion hat ein Icon (tone-Klasse)', () => {
@@ -413,7 +412,7 @@ describe('K – UI', () => {
       }
     });
 
-    it('K41: die Sensitivitätsanalyse-Heatmap hat Aktienquoten-Zeilen und Reserven-Spalten', () => {
+    it('K41: der Strategieraum hat Aktienquoten-Zeilen und klar beschriftete Reserve-Spalten', () => {
       expect(comparisonView).toContain('heatmap-table');
       for (const label of ['100/0', '90/10', '80/20', '70/30', '60/40']) {
         expect(comparisonView, label).toContain(label);
@@ -421,9 +420,14 @@ describe('K – UI', () => {
       expect(comparisonView).toContain('heat-cell');
       expect(comparisonView).toContain('sensitivity-block');
       expect(css).toMatch(/\.sensitivity-block\s*\{[^}]*display:\s*block/);
+      // Spaltenüberschrift und Einheit sind ausgeschrieben.
+      expect(comparisonView).toContain('heat-group-head');
+      expect(comparisonView).toContain('Reserve in Jahresbedarfen');
+      expect(comparisonView).toContain('>0 J.<');
+      expect(comparisonView).toContain('>3 J.<');
     });
 
-    it('K41b: die Sensitivitätsanalyse ist auch mobil sichtbar (nicht am Ansicht-Schalter)', () => {
+    it('K41b: der Strategieraum ist auch mobil sichtbar (nicht am Ansicht-Schalter)', () => {
       // Der Ansicht-Schalter gehört zum Vergleichsabschnitt und schaltet nur
       // zwischen Tabelle und Kennzahlen um.
       const toggle =
@@ -433,10 +437,31 @@ describe('K – UI', () => {
 
       // Die Heatmap liegt im eigenen Abschnitt und wird von `cmp-block`
       // (mobile: display:none) nicht mehr ausgeblendet.
-      const sensitivity = comparisonView.slice(comparisonView.indexOf('Sensitivitätsanalyse'));
+      const sensitivity = comparisonView.slice(comparisonView.indexOf('Strategieraum'));
       expect(sensitivity).toContain('sensitivity-block');
       expect(sensitivity).toContain('heatmap-table');
       expect(sensitivity).not.toContain('cmp-block');
+    });
+
+    it('K41c: jede Heatmap-Zelle ist als konkrete Strategie benannt', () => {
+      expect(comparisonView).toContain('section-title">Strategieraum<');
+      // „Strategie 80/20 · 2 Jahresbedarfe“ steht als Zellen-Label (aria/title)
+      // und als Überschrift des gewählten Feldes.
+      expect(comparisonView).toContain('Strategie 80/20 · 2 Jahresbedarfe');
+      expect(comparisonView).toContain('Strategie 100/0 · 0 Jahresbedarfe');
+      expect(comparisonView).toContain('Gewählte Strategie');
+      expect(comparisonView).toContain('Diese Kombination in Simulation anzeigen');
+      expect(css).toMatch(/\.selected-cell-kicker\s*\{/);
+    });
+
+    it('K41d: ein Klick auf eine Zelle führt direkt ins Ergebnis der Simulation', () => {
+      // Die Zelle kündigt den Sprung an …
+      expect(comparisonView).toContain('öffnet das Ergebnis in der Simulation');
+      expect(comparisonView).toContain('Klick zeigt das Ergebnis in der Simulation');
+      // … und der Abschnitt erklärt die Ein-Klick-Bedienung.
+      expect(comparisonView).toContain(
+        'Klick auf eine Zelle übernimmt die Kombination und springt direkt zum Ergebnis in der',
+      );
     });
 
     it('K42: die Heatmap-Legende beschreibt die Farbskala', () => {

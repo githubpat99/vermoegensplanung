@@ -35,10 +35,10 @@ liegende Excel-Datei beim Aufbau nicht verfügbar war.
 | H – Rebalancing-Erhaltung | `src/tests/rebalancing.test.ts` | 3 | Rebalancing erhält das Gesamtvermögen exakt |
 | I – Extremfälle | `src/tests/edgeCases.test.ts` | 6 | Aktien −100 %, Reserve 0, Bonds 0, Bedarf 0, Bedarf > Vermögen → „Vermögen aufgebraucht“ |
 | J – Referenzregression | `src/tests/regression.test.ts` | 4 | Golden Master + dokumentierte Excel-Abweichung + qualitative Muster |
-| K – UI | `src/tests/ui.test.tsx` | 64 | Tabs, App-Header, Abschnitts-Navigation (inkl. hervorgehobenem „Ergebnisse“), Abschnitts-Kacheln (ohne Nummerierung, standardmässig eingeklappt), Ergebnis-Kacheln, kompakte Live-Ergebnisleiste, kompakte S4-Karte mit Aktiv-Regel-Satz, Jahresdetail mit Auffüllmechanik, Grafiken, Bedienelemente, Szenariovergleich (Matrix/Robustheit/Heatmap/Ausgewähltes Feld), PWA-Manifest, Reserve-Regler der Ausgangslage, Reserve-Aufteilung und Bond-Annahmen |
+| K – UI | `src/tests/ui.test.tsx` | 67 | Tabs, App-Header, Abschnitts-Kacheln (ohne Nummerierung, ohne Abschnitts-Navigation, standardmässig eingeklappt), Ergebnis-Kacheln, kompakte Live-Ergebnisleiste, kompakte S4-Karte mit Aktiv-Regel-Satz, Jahresdetail mit Auffüllmechanik, Grafiken, Bedienelemente, Szenariovergleich (Matrix/Robustheit/Strategieraum/Gewählte Strategie), PWA-Manifest, Reserve-Regler der Ausgangslage, Reserve-Aufteilung und Bond-Annahmen |
 | L – Robustheit & Sensitivität | `src/tests/robustness.test.ts` | 9 | Median, Drawdown, Kennzahlen, Sensitivitätsraster |
 | M – Liquiditätsreserve | `src/tests/reserve.test.ts` | 16 | Aufteilung 1/3 Geldmarkt / 2/3 Obli, Verzinsung, Entnahme zuerst aus der Reserve, Reservehöhe für alle Strategien, Wirkung je Marktphase, fixe vs. historische Bondrendite, Portfoliorendite, S4-Schwellenregel, Zielreserve und Auffüllbeträge |
-| **Total** | | **166** | |
+| **Total** | | **169** | |
 
 Ergänzend zur automatisierten UI-Prüfung wurden die Screens im echten Browser
 bei 1920×1080, 1366×768 und 390×844 geprüft (Abschnitt 6).
@@ -66,11 +66,11 @@ Drei Ansichten über die Kopf-Tabs: **Simulation | Szenariovergleich | Quellen**
 | Ausgangslage (gleicher Kopf wie in der Simulation) | Startvermögen, Kapitalbedarf, Verteilung, Rebalancing, Liquiditätsreserve |
 | Szenario- × Strategie-Matrix | Endvermögen (CHF), bestes Ergebnis je Zeile hervorgehoben |
 | Robustheits-Kennzahlen | Schlechtestes Ergebnis, Ø, Median, aufgebraucht (n/5), grösster Rückgang |
-| Sensitivitätsanalyse | Heatmap Aktienquote × Reserve, Ø über alle Szenarien, grün = höher |
-| Ausgewähltes Feld | Kombination + Durchschnitt + Aufschlüsselung, Button „in Simulation anzeigen“ |
+| Strategieraum | Heatmap Aktienquote × **Reserve in Jahresbedarfen**; jede Zelle ist eine benannte Strategie (z. B. „Strategie 80/20 · 2 Jahresbedarfe“), Ø über alle Szenarien, grün = höher. **Ein Klick** übernimmt die Kombination und springt direkt zum Ergebnis in der Simulation (Kachel „Ergebnisse“ wird geöffnet) |
+| Gewählte Strategie | Zuletzt gewählte Kombination + Durchschnitt + Aufschlüsselung; Button „in Simulation anzeigen“ |
 
 Auf Mobilgeräten schaltet ein Segment-Control zwischen Tabelle und Kennzahlen
-um; die Sensitivitätsanalyse hat eine eigene Kachel und ist dort immer sichtbar.
+um; der Strategieraum hat eine eigene Kachel und ist dort immer sichtbar.
 Es gibt **keine Bewertung „beste Strategie“**.
 
 **Stabile Reihenfolge und Farben:** Die Strategien werden in allen Ansichten
@@ -78,13 +78,11 @@ immer in der Reihenfolge **S1–S4** geführt – nie nach Wert umsortiert. Jede
 Strategie hat eine feste Farbe (`S1` navy, `S2` sky, `S3` violett, `S4` grün).
 
 **Startzustand:** Alle Kacheln sind eingeklappt und ohne Nummerierung; die
-Szenario-Zeilen im Marktszenario sind ebenfalls zugeklappt. Die
-Abschnitts-Navigation unter dem Header führt in der Reihenfolge
-Ausgangslage · Strategien · Marktszenario · **ERGEBNISSE** · Weitere
-Einstellungen · Jahresdetails; „Ergebnisse“ ist hervorgehoben und steht immer
-direkt nach dem Marktszenario. Beim Bearbeiten ausserhalb des Ergebnisbereichs
-zeigt eine kompakte Live-Ergebnisleiste das Endvermögen aller sichtbaren
-Strategien.
+Szenario-Zeilen im Marktszenario sind ebenfalls zugeklappt. Eine
+Abschnitts-Navigation unter dem Header gibt es nicht – die Kacheln sind der
+Einstieg, „Ergebnisse“ steht im Dokument immer direkt nach dem Marktszenario.
+Beim Bearbeiten ausserhalb des Ergebnisbereichs zeigt eine kompakte
+Live-Ergebnisleiste das Endvermögen aller sichtbaren Strategien.
 
 ## 3. Rechenkern – verifizierte Eigenschaften
 

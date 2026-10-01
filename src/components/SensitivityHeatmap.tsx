@@ -4,6 +4,8 @@ import {
   findCell,
   type SensitivityCell,
 } from '../engine/sensitivity';
+import { formatChf } from './format';
+import { reserveLabel } from './strategyVisuals';
 
 interface SensitivityHeatmapProps {
   cells: SensitivityCell[];
@@ -47,7 +49,8 @@ function heatColor(value: number, min: number, max: number): { bg: string; fg: s
 
 /**
  * Sensitivity heatmap: average end capital for every combination of equity
- * allocation (rows) and liquidity reserve (columns). Clicking a cell selects it.
+ * allocation (rows) and liquidity reserve (columns). Every cell is one
+ * concrete strategy ("80/20 with a 2-year reserve"); clicking a cell selects it.
  */
 export function SensitivityHeatmap({
   cells,
@@ -62,13 +65,25 @@ export function SensitivityHeatmap({
   return (
     <div className="table-scroll">
       <table className="data-table heatmap-table">
-        <caption className="sr-only">Sensitivitätsanalyse des durchschnittlichen Endvermögens</caption>
+        <caption className="sr-only">
+          Strategieraum: durchschnittliches Endvermögen je Strategie aus Aktienquote und Reservehöhe
+        </caption>
         <thead>
           <tr>
-            <th scope="col" className="heat-corner">Aktienquote</th>
+            <th scope="col" className="heat-corner">
+              Aktienquote
+            </th>
+            <th scope="col" className="heat-group-head" colSpan={SENSITIVITY_RESERVE_YEARS.length}>
+              Reserve in Jahresbedarfen
+            </th>
+          </tr>
+          <tr>
+            <th scope="col" className="heat-corner heat-corner-sub">
+              <span className="sr-only">Strategie</span>
+            </th>
             {SENSITIVITY_RESERVE_YEARS.map((ry) => (
               <th key={ry} scope="col" className="heat-col-head">
-                {ry}
+                {ry} J.
               </th>
             ))}
           </tr>
@@ -82,6 +97,7 @@ export function SensitivityHeatmap({
                 if (!cell) return <td key={ry}>–</td>;
                 const { bg, fg } = heatColor(cell.averageEnd, min, max);
                 const selected = Math.abs(eq - selectedEquity) < 1e-9 && ry === selectedReserve;
+                const strategy = `Strategie ${allocationLabel(eq)} · ${reserveLabel(ry)}`;
                 return (
                   <td key={ry} className="heat-cell-td">
                     <button
@@ -90,6 +106,8 @@ export function SensitivityHeatmap({
                       style={{ background: bg, color: fg }}
                       onClick={() => onSelect(eq, ry)}
                       aria-pressed={selected}
+                      aria-label={`${strategy}: ${compactChf(cell.averageEnd)} Endvermögen (Durchschnitt über alle Szenarien) – öffnet das Ergebnis in der Simulation`}
+                      title={`${strategy} – ${formatChf(cell.averageEnd)} Endvermögen · Klick zeigt das Ergebnis in der Simulation`}
                     >
                       {compactChf(cell.averageEnd)}
                     </button>

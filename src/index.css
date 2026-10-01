@@ -116,48 +116,6 @@ body {
   }
 }
 
-/* --------------------------------------------------------- sub navigation */
-.subnav {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 2px;
-  padding: 2px 2px 8px;
-}
-
-.subnav a {
-  flex: 0 0 auto;
-  padding: 6px 11px;
-  border-radius: 999px;
-  color: var(--muted);
-  text-decoration: none;
-  font-size: 0.82rem;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.subnav a:hover {
-  background: var(--surface);
-  color: var(--brand);
-}
-
-/* "Ergebnisse" always sits directly after the market scenario and is the
-   primary result area – set apart from the parameter sections. */
-.subnav a.nav-result {
-  margin-left: 6px;
-  border: 1px solid var(--line);
-  background: var(--surface);
-  color: var(--brand);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-weight: 800;
-}
-
-.subnav a.nav-result:hover {
-  border-color: var(--brand);
-  color: var(--brand);
-}
-
 /* ----------------------------------------------------------- app header */
 .app-header {
   display: grid;
@@ -1637,10 +1595,55 @@ summary:focus-visible {
   font-weight: 800;
 }
 
+/* Clickable values: scenario × strategy matrix and robustness figures. */
+.matrix-cell,
+.robustness-cell {
+  width: 100%;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: inherit;
+  cursor: pointer;
+}
+
+.matrix-cell:hover,
+.matrix-cell:focus-visible,
+.robustness-cell:hover,
+.robustness-cell:focus-visible {
+  background: var(--brand-soft);
+  color: var(--brand);
+  outline: none;
+}
+
 @media (prefers-color-scheme: dark) {
   .matrix-best {
     background: #14532d;
     color: #bbf7d0;
+  }
+}
+
+/* Contextual notice, e.g. "reserve is 0 – all strategies compute identically". */
+.notice {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid #f59f00;
+  border-left-width: 4px;
+  border-radius: var(--radius-sm);
+  background: #fff7e6;
+  color: #92400e;
+  font-size: 0.84rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .notice {
+    background: #2a1f0b;
+    border-color: #a16207;
+    color: #fbbf24;
   }
 }
 
@@ -1669,12 +1672,23 @@ summary:focus-visible {
 
 .heat-corner,
 .heat-col-head,
-.heat-row-head {
+.heat-row-head,
+.heat-group-head {
   background: var(--surface-2);
   font-size: 0.76rem;
   font-weight: 700;
   color: var(--muted);
   text-align: center !important;
+}
+
+/* Group header above the reserve columns ("Reserve in Jahresbedarfen"). */
+.heat-group-head {
+  letter-spacing: 0.02em;
+}
+
+/* Empty corner cell of the second header row. */
+.heat-corner-sub {
+  background: var(--surface-2);
 }
 
 .heat-row-head {
@@ -1726,6 +1740,15 @@ summary:focus-visible {
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   padding: 14px;
+}
+
+.selected-cell-kicker {
+  margin: 0 0 2px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
 .selected-cell-title {
