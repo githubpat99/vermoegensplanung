@@ -53,7 +53,9 @@ export function ScenarioSelector({
   bondSequenceId,
   onBondSequenceChange,
 }: ScenarioSelectorProps) {
-  const [openId, setOpenId] = useState<string | null>(selectedId);
+  // All scenario tiles start collapsed – the detail text of the selected
+  // scenario is only shown after an explicit click.
+  const [openId, setOpenId] = useState<string | null>(null);
   const historical = scenarios.filter((s) => s.type === 'historical');
   const synthetic = scenarios.filter((s) => s.type === 'synthetic');
   const selected = scenarios.find((s) => s.id === selectedId);

@@ -113,12 +113,13 @@ Drei Ansichten über die Tabs im Kopfbereich:
 Mobile-first, kartenbasiert, ohne Excel-Look. Aufbau:
 
 1. **App-Header** – App-Icon, Produktname, Kernfrage, Tabs und Info-Button.
-2. **1. Ausgangslage** – Startvermögen, jährlicher Kapitalbedarf (mit CHF-Präfix),
+2. **Ausgangslage** – Startvermögen, jährlicher Kapitalbedarf (mit CHF-Präfix),
    Aktien/Obligationen-Slider, Rebalancing-Schalter und Liquiditätsreserve
    (Angabe der Aufteilung 1/3 Geldmarkt / 2/3 Obligationen in CHF).
-3. **2. Marktszenario** – historische und synthetische Szenarien als auswählbare
+   Gleiche Kachel wie im Szenariovergleich.
+3. **Marktszenario** – historische und synthetische Szenarien als auswählbare
    Zeilen mit Untertitel.
-4. **Ergebnisse** (immer sichtbar, Badge „Live aktualisiert“):
+4. **Ergebnisse** (aufklappbar, Badge „Live aktualisiert“):
    - farbige **Strategie-Kacheln** (Verwendungsregel der Reserve, Endvermögen und
      Veränderung zum Startvermögen),
    - **Vermögensverlauf** (Kennzahl umschaltbar: Gesamt-/investiertes Vermögen),
@@ -131,9 +132,8 @@ Mobile-first, kartenbasiert, ohne Excel-Look. Aufbau:
 
 ### Szenariovergleich
 
-- **Ausgangslage** (immer sichtbar, für alle Tests identisch) – Startvermögen,
-  Kapitalbedarf, Aktien/Obligationen, Rebalancing. **Ohne** Reserve-Eingabe,
-  denn Reservehöhe und Verwendung sind Teil der Strategie.
+- **Ausgangslage** (identische Kachel wie in der Simulation) – Startvermögen,
+  Kapitalbedarf, Aktien/Obligationen, Rebalancing und Liquiditätsreserve.
 - **Szenario- und Strategievergleich** – Endvermögen (CHF) je Szenario (Zeile)
   und Strategie (Spalte). Das beste Ergebnis je Zeile ist hervorgehoben;
   Klick auf eine Zeile wählt das Szenario.
@@ -151,8 +151,10 @@ Mobile-first, kartenbasiert, ohne Excel-Look. Aufbau:
 - Auf Mobilgeräten schaltet ein Segment-Control zwischen **Tabelle**, **Heatmap**
   und **Kennzahlen** um.
 
-Die Sektionen sind aufklappbar; Ausgangslage und Marktszenario sind offen, die
-übrigen eingeklappt. Die Navigation öffnet das gewählte Ziel automatisch.
+Die Kacheln sind aufklappbar, zeigen in der Kopfzeile nur Icon und Titel (keine
+Nummerierung, keine Untertitel) und starten **alle eingeklappt**; auch die
+Szenario-Zeilen im Marktszenario sind zunächst zugeklappt. Die Navigation öffnet
+das gewählte Ziel automatisch.
 Reihenfolge (**S1–S4**) und Farben der Strategien bleiben in allen Ansichten stabil.
 Es gibt bewusst **keine Bewertung „beste Strategie“** – nur Zahlen und Kennzahlen.
 
@@ -245,10 +247,9 @@ eine Jahresbedarfszahl. Reihenfolge (S1–S4) und Farben bleiben in allen Ansich
 stabil.
 
 > **Reserve-Regler der Ausgangslage wirkt auf alle Strategien.** Er steuert die
-> Reservehöhe, die für S1–S4 identisch ist; der Wert ist im Untertitel der
-> Sektion, in den Kachel-Badges und in den Spaltentiteln des Vergleichs
-> ablesbar. Die vier Strategien unterscheiden sich ausschliesslich in der
-> Verwendungsregel.
+> Reservehöhe, die für S1–S4 identisch ist; der Wert ist im Regler selbst, in den
+> Kachel-Badges und in den Spaltentiteln des Vergleichs ablesbar. Die vier
+> Strategien unterscheiden sich ausschliesslich in der Verwendungsregel.
 
 > Die exakte Excel-Referenzlogik des ursprünglichen Prototyps lag beim Aufbau
 > nicht vor. Die Semantik oben ist eine saubere, dokumentierte Neu-Spezifikation.

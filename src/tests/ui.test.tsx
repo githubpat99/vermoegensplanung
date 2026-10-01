@@ -90,13 +90,20 @@ describe('K – UI', () => {
     expect(css).toContain('@media (prefers-color-scheme: dark)');
   });
 
-  describe('Nummerierte Sektionen (Design)', () => {
-    it('K12: die Sektionen sind nummeriert und tragen Untertitel', () => {
-      expect(html).toContain('section-step');
-      expect(html).toContain('Ausgangslage');
-      expect(html).toContain('Marktszenario');
-      expect(html).toContain('Deine Basis für alle Strategien');
-      expect(html).toContain('Gegen welche Marktphase');
+  describe('Abschnitts-Kacheln (Design)', () => {
+    it('K12: die Sektionen zeigen nur den Titel – ohne Nummerierung und Untertitel', () => {
+      expect(html).not.toContain('section-step');
+      expect(css).not.toContain('.section-step');
+      expect(html).not.toContain('section-sub');
+      for (const title of [
+        'Ausgangslage',
+        'Marktszenario',
+        'Ergebnisse',
+        'Weitere Einstellungen',
+        'Jahresdetails',
+      ]) {
+        expect(html, title).toContain(`section-title">${title}<`);
+      }
     });
 
     it('K13: jede Sektion hat ein Icon (tone-Klasse)', () => {
@@ -112,20 +119,25 @@ describe('K – UI', () => {
       expect(css).toMatch(/details\.section\s*>\s*summary/);
     });
 
-    it('K15: Ausgangslage und Marktszenario sind offen, die übrigen zugeklappt', () => {
-      const openTag = (id: string) => html.match(new RegExp(`<details[^>]*id="${id}"[^>]*>`))?.[0] ?? '';
-      expect(openTag('ausgangslage')).toContain('open');
-      expect(openTag('szenario')).toContain('open');
-      for (const id of ['einstellungen', 'jahresdetail']) {
-        expect(openTag(id), id).toBeTruthy();
-        expect(openTag(id), `${id} zugeklappt`).not.toContain('open');
+    it('K15: alle Abschnitts-Kacheln sind standardmässig zugeklappt', () => {
+      const openTag = (markup: string, id: string) =>
+        markup.match(new RegExp(`<details[^>]*id="${id}"[^>]*>`))?.[0] ?? '';
+      for (const id of ['ausgangslage', 'szenario', 'ergebnisse', 'einstellungen', 'jahresdetail']) {
+        expect(openTag(html, id), id).toBeTruthy();
+        expect(openTag(html, id), `${id} zugeklappt`).not.toContain('open');
       }
     });
 
-    it('K16: die Sektion "Ergebnisse" ist nicht aufklappbar und trägt das Live-Badge', () => {
+    it('K16: die Sektion "Ergebnisse" ist aufklappbar und trägt das Live-Badge', () => {
+      expect(html).toMatch(/<details[^>]*id="ergebnisse"/);
       expect(html).toContain('live-badge');
       expect(html).toContain('Live aktualisiert');
-      expect(html).not.toMatch(/<details[^>]*id="ergebnisse"/);
+    });
+
+    it('K16b: die Szenario-Kacheln im Marktszenario sind standardmässig eingeklappt', () => {
+      expect(html).toContain('scenario-row');
+      expect(html).not.toContain('scenario-detail');
+      expect(css).toMatch(/\.scenario-detail\s*\{/);
     });
   });
 
@@ -286,8 +298,15 @@ describe('K – UI', () => {
       expect(css).toMatch(/\.mode-tab\.active\s*\{/);
     });
 
-    it('K36: die Ausgangslage ist oben und immer sichtbar (für alle Tests identisch)', () => {
-      expect(comparisonView).toContain('für alle Tests identisch');
+    it('K36: der obere Teil ist in beiden Screens identisch (Ausgangslage)', () => {
+      const head = (markup: string) =>
+        markup.match(/<details[^>]*id="ausgangslage"[\s\S]*?<\/summary>/)?.[0] ?? '';
+      expect(head(comparisonView)).not.toBe('');
+      // Gleiche Kachel-Kopfzeile wie in der Simulation: nur Icon, Titel, Chevron.
+      expect(head(comparisonView)).toBe(head(html));
+      expect(head(comparisonView)).toContain('section-title">Ausgangslage<');
+      expect(head(comparisonView)).not.toContain('section-sub');
+      expect(comparisonView).not.toContain('für alle Tests identisch');
       expect(comparisonView).toContain('base-inputs');
       expect(comparisonView).toContain('Startvermögen');
       expect(comparisonView).toContain('Jährlicher Kapitalbedarf');
@@ -379,8 +398,8 @@ describe('K – UI', () => {
   });
 
   describe('Ausgangslage-Reserve steuert die benutzerdefinierte Strategie', () => {
-    it('K46: die Reserve der Ausgangslage ist im Untertitel und in S4 sichtbar', () => {
-      expect(html).toContain('Reserve 2 Jahresbedarfe');
+    it('K46: die Reserve der Ausgangslage ist im Regler und in S4 sichtbar', () => {
+      expect(html).toContain('Reserve: 2,0 Jahresbedarfe');
       expect(html).toMatch(/Frei konfigurierbare Strategie mit 2 Jahresbedarfen Liquiditätsreserve/);
     });
 

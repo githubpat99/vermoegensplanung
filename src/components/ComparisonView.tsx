@@ -5,7 +5,7 @@ import { computeSensitivity, findCell, type SensitivityCell } from '../engine/se
 import type { MarketScenario, SimulationInput, Strategy } from '../engine/types';
 import { BaseInputs } from './BaseInputs';
 import { reserveInChf, reserveYearsFrom, ReserveInput, type ReserveState } from './ReserveInput';
-import { StaticPanel } from './SectionPanel';
+import { SectionPanel } from './SectionPanel';
 import { formatChf } from './format';
 import { formatYears } from './strategyVisuals';
 import { ScenarioMatrix } from './ScenarioMatrix';
@@ -78,10 +78,9 @@ export function ComparisonView({
 
   return (
     <div className="comparison-view">
-      <StaticPanel
+      <SectionPanel
         id="ausgangslage"
         title="Ausgangslage"
-        subtitle="für alle Tests identisch"
         icon={<IconUser size={22} />}
         tone="blue"
       >
@@ -93,11 +92,10 @@ export function ComparisonView({
           onChange={onChange}
           note={`Sie gilt für alle ${strategies.length} Strategien und alle ${scenarios.length} Szenarien.`}
         />
-      </StaticPanel>
+      </SectionPanel>
 
-      <StaticPanel
+      <SectionPanel
         title="Szenario- und Strategievergleich"
-        subtitle={`Endvermögen (in CHF), nach ${input.duration} Jahren – alle Szenarien und Strategien auf einen Blick`}
         icon={<IconBarChart size={22} />}
         tone="indigo"
       >
@@ -144,11 +142,10 @@ export function ComparisonView({
           <p className="hint">über alle {scenarios.length} Szenarien</p>
           <RobustnessTable columns={columns} metrics={robustness} />
         </div>
-      </StaticPanel>
+      </SectionPanel>
 
-      <StaticPanel
+      <SectionPanel
         title="Sensitivitätsanalyse"
-        subtitle={`Endvermögen (Durchschnitt aller ${scenarios.length} Szenarien)`}
         icon={<IconShield size={22} />}
         tone="violet"
       >
@@ -173,7 +170,7 @@ export function ComparisonView({
             />
           </div>
         </div>
-      </StaticPanel>
+      </SectionPanel>
     </div>
   );
 }

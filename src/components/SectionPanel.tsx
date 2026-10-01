@@ -9,11 +9,11 @@ interface SectionPanelProps {
   subtitle?: string;
   /** Optional live summary appended to the subtitle line. */
   meta?: string;
-  /** Optional step number, rendered as "1." before the title. */
-  step?: number;
   icon?: ReactNode;
   /** Colour of the icon chip. */
   tone?: Tone;
+  /** Optional element on the right of the header (e.g. a live badge). */
+  badge?: ReactNode;
   /** Anchor id for the top navigation. */
   id?: string;
   className?: string;
@@ -22,16 +22,17 @@ interface SectionPanelProps {
 }
 
 /**
- * Section card with an icon chip, optional step number, subtitle and a
- * collapsible body (native <details> for accessibility).
+ * Section card ("Kachel") with an icon chip, subtitle and a collapsible body
+ * (native <details> for accessibility). Collapsed by default and without a
+ * numbering, so every view starts with the same, calm header rows.
  */
 export function SectionPanel({
   title,
   subtitle,
   meta,
-  step,
   icon,
   tone = 'blue',
+  badge,
   id,
   className = '',
   defaultOpen = false,
@@ -49,9 +50,7 @@ export function SectionPanel({
       <summary className="section-head">
         {icon && <span className={`section-icon tone-${tone}`}>{icon}</span>}
         <span className="section-text">
-          <span className="section-title">
-            {step != null && <span className="section-step">{step}.</span>} {title}
-          </span>
+          <span className="section-title">{title}</span>
           {(subtitle || meta) && (
             <span className="section-sub">
               {subtitle}
@@ -60,6 +59,7 @@ export function SectionPanel({
             </span>
           )}
         </span>
+        {badge}
         <IconChevronDown size={20} className="section-chevron" />
       </summary>
       <div className="section-body">{children}</div>

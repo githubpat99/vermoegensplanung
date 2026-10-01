@@ -35,10 +35,10 @@ liegende Excel-Datei beim Aufbau nicht verfügbar war.
 | H – Rebalancing-Erhaltung | `src/tests/rebalancing.test.ts` | 3 | Rebalancing erhält das Gesamtvermögen exakt |
 | I – Extremfälle | `src/tests/edgeCases.test.ts` | 6 | Aktien −100 %, Reserve 0, Bonds 0, Bedarf 0, Bedarf > Vermögen → „Vermögen aufgebraucht“ |
 | J – Referenzregression | `src/tests/regression.test.ts` | 4 | Golden Master + dokumentierte Excel-Abweichung + qualitative Muster |
-| K – UI | `src/tests/ui.test.tsx` | 52 | Tabs, App-Header, nummerierte Sektionen, Ergebnis-Kacheln, Grafiken, Bedienelemente, Szenariovergleich (Matrix/Robustheit/Heatmap/Ausgewähltes Feld), PWA-Manifest, Reserve-Regler der Ausgangslage, Reserve-Aufteilung und Bond-Annahmen |
+| K – UI | `src/tests/ui.test.tsx` | 58 | Tabs, App-Header, Abschnitts-Kacheln (nur Titel, ohne Nummerierung/Untertitel, standardmässig eingeklappt), Ergebnis-Kacheln, Grafiken, Bedienelemente, Szenariovergleich (Matrix/Robustheit/Heatmap/Ausgewähltes Feld), PWA-Manifest, Reserve-Regler der Ausgangslage, Reserve-Aufteilung und Bond-Annahmen |
 | L – Robustheit & Sensitivität | `src/tests/robustness.test.ts` | 9 | Median, Drawdown, Kennzahlen, Sensitivitätsraster |
 | M – Liquiditätsreserve | `src/tests/reserve.test.ts` | 12 | Aufteilung 1/3 Geldmarkt / 2/3 Obli, Verzinsung, Entnahme zuerst aus der Reserve, Reservehöhe für alle Strategien, Wirkung je Marktphase, fixe vs. historische Bondrendite |
-| **Total** | | **150** | |
+| **Total** | | **156** | |
 
 Ergänzend zur automatisierten UI-Prüfung wurden die Screens im echten Browser
 bei 1920×1080, 1366×768 und 390×844 geprüft (Abschnitt 6).
@@ -60,7 +60,7 @@ Drei Ansichten über die Kopf-Tabs: **Simulation | Szenariovergleich | Quellen**
 
 | Element | Inhalt |
 |---|---|
-| Ausgangslage (immer sichtbar) | Startvermögen, Kapitalbedarf, Verteilung, Rebalancing – **ohne** Reserve |
+| Ausgangslage (gleicher Kopf wie in der Simulation) | Startvermögen, Kapitalbedarf, Verteilung, Rebalancing, Liquiditätsreserve |
 | Szenario- × Strategie-Matrix | Endvermögen (CHF), bestes Ergebnis je Zeile hervorgehoben |
 | Robustheits-Kennzahlen | Schlechtestes Ergebnis, Ø, Median, aufgebraucht (n/5), grösster Rückgang |
 | Sensitivitätsanalyse | Heatmap Aktienquote × Reserve, Ø über alle Szenarien, grün = höher |
@@ -73,9 +73,10 @@ Kennzahlen um. Es gibt **keine Bewertung „beste Strategie“**.
 immer in der Reihenfolge **S1–S4** geführt – nie nach Wert umsortiert. Jede
 Strategie hat eine feste Farbe (`S1` navy, `S2` sky, `S3` violett, `S4` grün).
 
-**Startzustand:** Ausgangslage und Marktszenario sind geöffnet, „Weitere
-Einstellungen“ und „Jahresdetails“ eingeklappt. Die Navigation öffnet das
-gewählte Ziel automatisch.
+**Startzustand:** Alle Kacheln sind eingeklappt und zeigen in der Kopfzeile nur
+Icon und Titel (keine Nummerierung, keine Untertitel); die Szenario-Zeilen im
+Marktszenario sind ebenfalls zugeklappt. Die Navigation öffnet das gewählte Ziel
+automatisch.
 
 ## 3. Rechenkern – verifizierte Eigenschaften
 

@@ -29,7 +29,6 @@ import {
   IconTrend,
   IconUser,
 } from './components/icons';
-import { reserveLabel } from './components/strategyVisuals';
 
 const ALL_IDS = ['S1', 'S2', 'S3', 'S4'];
 
@@ -177,7 +176,6 @@ export default function App({ initialMode = 'simulation' }: { initialMode?: AppM
           <StaticPanel
             id="quellen"
             title="Datengrundlage & Quellen"
-            subtitle="MSCI World, Bloomberg U.S. Aggregate, Methodik"
             icon={<IconBook size={22} />}
             tone="green"
           >
@@ -195,13 +193,9 @@ export default function App({ initialMode = 'simulation' }: { initialMode?: AppM
 
           <SectionPanel
             id="ausgangslage"
-            step={1}
             title="Ausgangslage"
-            subtitle="Deine Basis für alle Strategien"
             icon={<IconUser size={22} />}
             tone="blue"
-            meta={`${(equityWeight * 100).toFixed(0)}/${((1 - equityWeight) * 100).toFixed(0)} · Reserve ${reserveLabel(reserveYears)}`}
-            defaultOpen
           >
             <InputPanel
               input={effectiveInput}
@@ -214,13 +208,9 @@ export default function App({ initialMode = 'simulation' }: { initialMode?: AppM
 
           <SectionPanel
             id="szenario"
-            step={2}
             title="Marktszenario"
-            subtitle="Gegen welche Marktphase willst du deinen Plan testen?"
             icon={<IconTrend size={22} />}
             tone="indigo"
-            meta={shortScenarioName(scenario.name)}
-            defaultOpen
           >
             <ScenarioSelector
               scenarios={ALL_SCENARIOS}
@@ -231,7 +221,7 @@ export default function App({ initialMode = 'simulation' }: { initialMode?: AppM
             />
           </SectionPanel>
 
-          <StaticPanel
+          <SectionPanel
             id="ergebnisse"
             title="Ergebnisse"
             icon={<IconBarChart size={22} />}
@@ -269,12 +259,11 @@ export default function App({ initialMode = 'simulation' }: { initialMode?: AppM
                 strategyName={detailResult ? `${detailResult.strategyId} · ${detailResult.strategyName}` : ''}
               />
             </details>
-          </StaticPanel>
+          </SectionPanel>
 
           <SectionPanel
             id="einstellungen"
             title="Weitere Einstellungen"
-            subtitle="Startjahr, Dauer, Strategien, eigene Szenarien, Bond-Annahmen"
             icon={<IconGear size={22} />}
             tone="slate"
             defaultOpen={false}
@@ -292,7 +281,6 @@ export default function App({ initialMode = 'simulation' }: { initialMode?: AppM
           <SectionPanel
             id="jahresdetail"
             title="Jahresdetails"
-            subtitle="Alle Werte pro Jahr im Detail"
             icon={<IconTable size={22} />}
             tone="amber"
             defaultOpen={false}
