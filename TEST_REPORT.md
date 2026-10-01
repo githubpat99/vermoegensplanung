@@ -35,10 +35,10 @@ liegende Excel-Datei beim Aufbau nicht verfügbar war.
 | H – Rebalancing-Erhaltung | `src/tests/rebalancing.test.ts` | 3 | Rebalancing erhält das Gesamtvermögen exakt |
 | I – Extremfälle | `src/tests/edgeCases.test.ts` | 6 | Aktien −100 %, Reserve 0, Bonds 0, Bedarf 0, Bedarf > Vermögen → „Vermögen aufgebraucht“ |
 | J – Referenzregression | `src/tests/regression.test.ts` | 4 | Golden Master + dokumentierte Excel-Abweichung + qualitative Muster |
-| K – UI | `src/tests/ui.test.tsx` | 67 | Tabs, App-Header, Abschnitts-Kacheln (ohne Nummerierung, ohne Abschnitts-Navigation, standardmässig eingeklappt), Ergebnis-Kacheln, kompakte Live-Ergebnisleiste, kompakte S4-Karte mit Aktiv-Regel-Satz, Jahresdetail mit Auffüllmechanik, Grafiken, Bedienelemente, Szenariovergleich (Matrix/Robustheit/Strategieraum/Gewählte Strategie), PWA-Manifest, Reserve-Regler der Ausgangslage, Reserve-Aufteilung und Bond-Annahmen |
+| K – UI | `src/tests/ui.test.tsx` | 70 | Tabs, App-Header, Abschnitts-Kacheln (ohne Nummerierung, ohne Abschnitts-Navigation, standardmässig eingeklappt), Ergebnis-Kacheln, kompakte Live-Ergebnisleiste, kompakte S4-Karte mit Aktiv-Regel-Satz, Jahresdetail mit Auffüllmechanik, Klick-Ziele ins Ergebnis (Matrix, Kennzahlen, Strategieraum), Hinweis bei Reserve 0, Grafiken, Bedienelemente, Szenariovergleich (Matrix/Robustheit/Strategieraum/Gewählte Strategie), PWA-Manifest, Reserve-Regler der Ausgangslage, Reserve-Aufteilung und Bond-Annahmen |
 | L – Robustheit & Sensitivität | `src/tests/robustness.test.ts` | 9 | Median, Drawdown, Kennzahlen, Sensitivitätsraster |
 | M – Liquiditätsreserve | `src/tests/reserve.test.ts` | 16 | Aufteilung 1/3 Geldmarkt / 2/3 Obli, Verzinsung, Entnahme zuerst aus der Reserve, Reservehöhe für alle Strategien, Wirkung je Marktphase, fixe vs. historische Bondrendite, Portfoliorendite, S4-Schwellenregel, Zielreserve und Auffüllbeträge |
-| **Total** | | **169** | |
+| **Total** | | **172** | |
 
 Ergänzend zur automatisierten UI-Prüfung wurden die Screens im echten Browser
 bei 1920×1080, 1366×768 und 390×844 geprüft (Abschnitt 6).
@@ -64,8 +64,9 @@ Drei Ansichten über die Kopf-Tabs: **Simulation | Szenariovergleich | Quellen**
 | Element | Inhalt |
 |---|---|
 | Ausgangslage (gleicher Kopf wie in der Simulation) | Startvermögen, Kapitalbedarf, Verteilung, Rebalancing, Liquiditätsreserve |
-| Szenario- × Strategie-Matrix | Endvermögen (CHF), bestes Ergebnis je Zeile hervorgehoben |
-| Robustheits-Kennzahlen | Schlechtestes Ergebnis, Ø, Median, aufgebraucht (n/5), grösster Rückgang |
+| Szenario- × Strategie-Matrix | Endvermögen (CHF), bestes Ergebnis je Zeile hervorgehoben; **Klick auf einen Wert** öffnet die Kombination im Ergebnis der Simulation |
+| Robustheits-Kennzahlen | Schlechtestes Ergebnis, Ø, Median, aufgebraucht (n/5), grösster Rückgang; **Klick auf eine Kennzahl** öffnet die Strategie im Ergebnis |
+| Ohne Reserve (0 Jahresbedarfe) | Hinweis, dass die Auffüllregeln nicht greifen können und S1–S4 deshalb identisch rechnen |
 | Strategieraum | Heatmap Aktienquote × **Reserve in Jahresbedarfen**; jede Zelle ist eine benannte Strategie (z. B. „Strategie 80/20 · 2 Jahresbedarfe“), Ø über alle Szenarien, grün = höher. **Ein Klick** übernimmt die Kombination und springt direkt zum Ergebnis in der Simulation (Kachel „Ergebnisse“ wird geöffnet) |
 | Gewählte Strategie | Zuletzt gewählte Kombination + Durchschnitt + Aufschlüsselung; Button „in Simulation anzeigen“ |
 
@@ -199,6 +200,7 @@ Abgesichert durch Gruppe M1–M16 (Engine) und K46–K52c (UI).
 | 6 | Strategienamen ohne „80/20“, ohne „Puffer“ und ohne Jahresbedarfszahl | Verteilung und Reservehöhe liegen in der Ausgangslage; die Namen beschreiben nur noch die Verwendungsregel. |
 | 7 | Ein Drittel der Reserve wird mit 0 % (Geldmarktzins) verzinst | Vorgabe des Nutzers („orientiert am aktuellen Leitzins“). Folge: Die Reserve kostet in vier von fünf Szenarien Ertrag – bewusst nicht geglättet. Der Satz ist in den Einstellungen änderbar. |
 | 8 | S4-Standardregel neu: „Portfoliorendite des Jahres > 7 %“ statt „über Startwert“ | Anforderung des Nutzers (kompakte S4-Karte mit Schwelle und Zielreserve). Der Golden Master in Gruppe J1 wurde entsprechend neu eingefroren; die Excel-Abweichungen der Strategien S1–S3 sind unverändert. |
+| 9 | Bei Reserve 0 sind die Kennzahlen aller vier Strategien identisch | Kein Rechenfehler: Ohne Reserve gibt es nichts aufzufüllen, die Auffüllregeln sind wirkungslos (nachgerechnet für 0/1,5/2 Jahresbedarfe × 80/20 und 100/0). Die Oberfläche weist im Vergleich explizit darauf hin. |
 
 Keine stillen Zahlenmanipulationen, keine Dummy-Werte, keine TODO-Platzhalter
 in der produktiven Simulation.

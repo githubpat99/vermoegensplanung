@@ -156,10 +156,15 @@ Ergebnisbereich.
   Kapitalbedarf, Aktien/Obligationen, Rebalancing und Liquiditätsreserve.
 - **Szenario- und Strategievergleich** – Endvermögen (CHF) je Szenario (Zeile)
   und Strategie (Spalte). Das beste Ergebnis je Zeile ist hervorgehoben;
-  Klick auf eine Zeile wählt das Szenario.
+  Klick auf eine Zeile wählt das Szenario, **Klick auf einen Wert** öffnet genau
+  diese Kombination (Szenario + Strategie) im Ergebnis der Simulation.
 - **Robustheits-Kennzahlen** je Strategie: schlechtestes Ergebnis, Ø Endvermögen,
   Median, „Vermögen aufgebraucht“ (Anzahl von 5) und grösster Rückgang
-  (Peak→Tief, in %).
+  (Peak→Tief, in %). **Klick auf eine Kennzahl** öffnet die Strategie im Ergebnis
+  der Simulation.
+- **Hinweis ohne Reserve:** Ist die Reserve 0 Jahresbedarfe, können die
+  Auffüllregeln nicht greifen – S1–S4 rechnen dann identisch und die Kennzahlen
+  unterscheiden sich nicht. Der Vergleich sagt das an dieser Stelle ausdrücklich.
 - **Strategieraum** – Heatmap des durchschnittlichen Endvermögens über alle
   Szenarien. Jede Zelle ist eine **eigene Strategie**: Zeile = Aktienquote
   (100/0 … 60/40), Spalte = **Reserve in Jahresbedarfen** (0–3, Kurzform „0 J.“

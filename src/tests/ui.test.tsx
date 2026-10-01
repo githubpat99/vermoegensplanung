@@ -17,6 +17,10 @@ describe('K – UI', () => {
   const html = renderToStaticMarkup(<App />);
   const sourcesView = renderToStaticMarkup(<App initialMode="sources" />);
   const comparisonView = renderToStaticMarkup(<App initialMode="comparison" />);
+  /** Vergleich ohne Reserve – die Auffüllregeln können dann nicht greifen. */
+  const comparisonWithoutReserve = renderToStaticMarkup(
+    <App initialMode="comparison" initialReserveYears={0} />,
+  );
   const css = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8');
 
   it('K1: die App rendert ohne Fehler', () => {
@@ -480,6 +484,38 @@ describe('K – UI', () => {
     it('K44: die Matrix hebt das beste Ergebnis je Zeile hervor', () => {
       expect(comparisonView).toContain('matrix-best');
       expect(css).toMatch(/\.matrix-best\s*\{/);
+    });
+
+    it('K44b: jeder Matrix-Wert führt per Klick ins Ergebnis der Simulation', () => {
+      expect(comparisonView).toContain('matrix-cell');
+      expect(comparisonView).toContain('Schlechte Börsenjahre · S1:');
+      expect(comparisonView).toContain('öffnet das Ergebnis in der Simulation');
+      expect(comparisonView).toContain(
+        'Klick auf einen Wert öffnet das Ergebnis in der Simulation',
+      );
+      expect(css).toMatch(/\.matrix-cell,\s*\.robustness-cell\s*\{[^}]*cursor:\s*pointer/);
+    });
+
+    it('K44c: jede Kennzahl führt per Klick ins Ergebnis der Simulation', () => {
+      expect(comparisonView).toContain('robustness-cell');
+      expect(comparisonView).toContain('S3 · Median:');
+      expect(comparisonView).toContain(
+        'Klick auf einen Wert öffnet die Strategie im Ergebnis der Simulation',
+      );
+      expect(css).toMatch(/\.matrix-cell:hover,\s*\.matrix-cell:focus-visible/);
+    });
+
+    it('K44d: ohne Reserve erklärt ein Hinweis die identischen Kennzahlen', () => {
+      // Mit Reserve (Standard) gibt es keinen Hinweis.
+      expect(comparisonView).not.toContain('0 Jahresbedarfe</strong>. Ohne Reserve');
+      const notice = comparisonWithoutReserve.match(/<p class="notice">[\s\S]*?<\/p>/)?.[0] ?? '';
+      expect(notice).not.toBe('');
+      expect(notice).toContain('0 Jahresbedarfe');
+      expect(notice).toContain('S1–S4 rechnen identisch');
+      expect(notice).toContain('Reserve in der „Ausgangslage“ erhöhen');
+      expect(css).toMatch(/\.notice\s*\{/);
+      // Die Kennzahlen selbst bleiben unverändert gerendert.
+      expect(comparisonWithoutReserve).toContain('robustness-table');
     });
 
     it('K45: es gibt keine Bewertung "beste Strategie"', () => {
