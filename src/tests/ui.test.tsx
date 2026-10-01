@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import App from '../App';
 import { STRATEGY_ORDER, strategyColor, strategyCard, reserveLabel } from '../components/strategyVisuals';
+import { activeRuleSummary } from '../components/UserStrategyCard';
 import { CH_GROUP_SEPARATOR, formatChf, formatChfInput } from '../components/format';
 
 /**
@@ -91,12 +92,12 @@ describe('K – UI', () => {
   });
 
   describe('Abschnitts-Kacheln (Design)', () => {
-    it('K12: die Sektionen zeigen nur den Titel – ohne Nummerierung und Untertitel', () => {
+    it('K12: die Sektionen tragen Untertitel, aber keine Nummerierung', () => {
       expect(html).not.toContain('section-step');
       expect(css).not.toContain('.section-step');
-      expect(html).not.toContain('section-sub');
       for (const title of [
         'Ausgangslage',
+        'Strategien',
         'Marktszenario',
         'Ergebnisse',
         'Weitere Einstellungen',
@@ -104,6 +105,28 @@ describe('K – UI', () => {
       ]) {
         expect(html, title).toContain(`section-title">${title}<`);
       }
+      expect(html).toContain('Deine Basis für alle Strategien');
+      expect(html).toContain('Gegen welche Marktphase');
+    });
+
+    it('K12b: die Navigation führt in der festgelegten Reihenfolge durch alle Abschnitte', () => {
+      const nav = html.match(/<nav class="subnav"[\s\S]*?<\/nav>/)?.[0] ?? '';
+      expect(nav).not.toBe('');
+      const labels = [...nav.matchAll(/<a [^>]*>([^<]+)<\/a>/g)].map((m) => m[1]);
+      expect(labels).toEqual([
+        'Ausgangslage',
+        'Strategien',
+        'Marktszenario',
+        'Ergebnisse',
+        'Weitere Einstellungen',
+        'Jahresdetails',
+      ]);
+      // „Ergebnisse“ steht direkt nach dem Marktszenario und ist hervorgehoben.
+      expect(nav).toMatch(/class="nav-result"[^>]*>Ergebnisse</);
+      expect(css).toMatch(/\.subnav a\.nav-result\s*\{/);
+      // Reihenfolge im Dokument: Ergebnisse folgt auf das Marktszenario.
+      expect(html.indexOf('id="szenario"')).toBeLessThan(html.indexOf('id="ergebnisse"'));
+      expect(html.indexOf('id="strategien"')).toBeLessThan(html.indexOf('id="szenario"'));
     });
 
     it('K13: jede Sektion hat ein Icon (tone-Klasse)', () => {
@@ -122,7 +145,7 @@ describe('K – UI', () => {
     it('K15: alle Abschnitts-Kacheln sind standardmässig zugeklappt', () => {
       const openTag = (markup: string, id: string) =>
         markup.match(new RegExp(`<details[^>]*id="${id}"[^>]*>`))?.[0] ?? '';
-      for (const id of ['ausgangslage', 'szenario', 'ergebnisse', 'einstellungen', 'jahresdetail']) {
+      for (const id of ['ausgangslage', 'strategien', 'szenario', 'ergebnisse', 'einstellungen', 'jahresdetail']) {
         expect(openTag(html, id), id).toBeTruthy();
         expect(openTag(html, id), `${id} zugeklappt`).not.toContain('open');
       }
@@ -138,6 +161,34 @@ describe('K – UI', () => {
       expect(html).toContain('scenario-row');
       expect(html).not.toContain('scenario-detail');
       expect(css).toMatch(/\.scenario-detail\s*\{/);
+    });
+  });
+
+  describe('Live-Ergebnisleiste', () => {
+    const bar = html.match(/<div class="live-bar[^"]*"[\s\S]*?<\/div>/)?.[0] ?? '';
+
+    it('K19b: die kompakte Leiste zeigt jede sichtbare Strategie mit Endvermögen und Veränderung', () => {
+      expect(bar).not.toBe('');
+      expect(bar).toContain('class="live-bar visible"');
+      expect(bar).toContain('live-bar-title');
+      expect(bar).toContain('live-bar-list');
+      for (const id of STRATEGY_ORDER) {
+        expect(bar, id).toContain(`>${id}</span>`);
+        expect(bar, `${id} Farbe`).toContain(strategyCard(id).bg);
+      }
+      expect(bar).toContain('live-bar-value');
+      expect(bar).toContain('live-bar-delta');
+      expect(bar).toContain('>Ergebnisse</button>');
+    });
+
+    it('K19c: die Leiste ist fixiert, standardmässig sichtbar und nur in der Simulation vorhanden', () => {
+      expect(css).toMatch(/\.live-bar\s*\{[^}]*position:\s*fixed/);
+      expect(css).toMatch(/\.live-bar\.visible\s*\{[^}]*display:\s*flex/);
+      expect(html).toContain('aria-label="Live-Ergebnisse"');
+      // Der Ergebnisabschnitt bleibt der primäre Ergebnisbereich.
+      expect(html).toMatch(/<details[^>]*id="ergebnisse"/);
+      expect(comparisonView).not.toContain('live-bar');
+      expect(sourcesView).not.toContain('live-bar');
     });
   });
 
@@ -305,7 +356,8 @@ describe('K – UI', () => {
       // Gleiche Kachel-Kopfzeile wie in der Simulation: nur Icon, Titel, Chevron.
       expect(head(comparisonView)).toBe(head(html));
       expect(head(comparisonView)).toContain('section-title">Ausgangslage<');
-      expect(head(comparisonView)).not.toContain('section-sub');
+      expect(head(comparisonView)).toContain('section-sub');
+      expect(comparisonView).toContain('Deine Basis für alle Strategien');
       expect(comparisonView).not.toContain('für alle Tests identisch');
       expect(comparisonView).toContain('base-inputs');
       expect(comparisonView).toContain('Startvermögen');
@@ -367,7 +419,24 @@ describe('K – UI', () => {
         expect(comparisonView, label).toContain(label);
       }
       expect(comparisonView).toContain('heat-cell');
-      expect(comparisonView).toContain('Heatmap');
+      expect(comparisonView).toContain('sensitivity-block');
+      expect(css).toMatch(/\.sensitivity-block\s*\{[^}]*display:\s*block/);
+    });
+
+    it('K41b: die Sensitivitätsanalyse ist auch mobil sichtbar (nicht am Ansicht-Schalter)', () => {
+      // Der Ansicht-Schalter gehört zum Vergleichsabschnitt und schaltet nur
+      // zwischen Tabelle und Kennzahlen um.
+      const toggle =
+        comparisonView.match(/<div class="segmented mobile-view-toggle"[\s\S]*?<\/div>/)?.[0] ?? '';
+      const labels = [...toggle.matchAll(/<button[^>]*>([^<]+)<\/button>/g)].map((m) => m[1]);
+      expect(labels).toEqual(['Tabelle', 'Kennzahlen']);
+
+      // Die Heatmap liegt im eigenen Abschnitt und wird von `cmp-block`
+      // (mobile: display:none) nicht mehr ausgeblendet.
+      const sensitivity = comparisonView.slice(comparisonView.indexOf('Sensitivitätsanalyse'));
+      expect(sensitivity).toContain('sensitivity-block');
+      expect(sensitivity).toContain('heatmap-table');
+      expect(sensitivity).not.toContain('cmp-block');
     });
 
     it('K42: die Heatmap-Legende beschreibt die Farbskala', () => {
@@ -398,8 +467,8 @@ describe('K – UI', () => {
   });
 
   describe('Ausgangslage-Reserve steuert die benutzerdefinierte Strategie', () => {
-    it('K46: die Reserve der Ausgangslage ist im Regler und in S4 sichtbar', () => {
-      expect(html).toContain('Reserve: 2,0 Jahresbedarfe');
+    it('K46: die Reserve der Ausgangslage ist im Untertitel und in S4 sichtbar', () => {
+      expect(html).toContain('Reserve 2 Jahresbedarfe');
       expect(html).toMatch(/Frei konfigurierbare Strategie mit 2 Jahresbedarfen Liquiditätsreserve/);
     });
 
@@ -431,6 +500,15 @@ describe('K – UI', () => {
       expect(html).toContain('1/3 Geldmarkt und 2/3 Obligationen');
     });
 
+    it('K50b: die Jahresdetails machen die Auffüllmechanik transparent', () => {
+      for (const col of ['Rendite %', 'Reserve vor Auff.', 'Auffüllung', 'Reserve neu']) {
+        expect(html, col).toContain(`>${col}<`);
+      }
+      // Die Portfoliorendite ist die Bezugsgrösse der S4-Schwelle.
+      expect(html).toContain('gewichtete Rendite des investierten Portfolios');
+      expect(css).toMatch(/\.row-refill\s*\{/);
+    });
+
     it('K51: die Bond-Annahmen sind in den Einstellungen wählbar', () => {
       expect(html).toContain('Bond-Annahmen');
       expect(html).toContain('Gemäss historischen Quellen (Szenario)');
@@ -445,7 +523,49 @@ describe('K – UI', () => {
       for (const label of ['Nur verbrauchen', 'Jährlich auffüllen', 'Nach guten Jahren']) {
         expect(html, label).toContain(label);
       }
-      expect(html).toContain('Über Startwert auffüllen');
+      expect(html).toContain('Nach Rendite-Schwelle');
+    });
+
+    it('K52b: die kompakte S4-Karte zeigt Reserve, Schwelle, Zielreserve und die aktive Regel', () => {
+      // Die Karte liegt im Abschnitt „Strategien“ (zwischen Ausgangslage und Marktszenario).
+      const card = html.slice(html.indexOf('id="strategien"'), html.indexOf('id="szenario"'));
+      expect(card).not.toBe('');
+      expect(card).toContain('class="user-card"');
+      expect(card).toContain('S4 · Benutzerdefiniert');
+      // Die Reserve kommt aus der Ausgangslage (2 Jahresbedarfe), die Zielreserve folgt ihr.
+      expect(card).toContain('aus der Ausgangslage');
+      expect(card).toContain('Auffüllen: bei Portfoliorendite &gt;');
+      expect(card).toContain('aria-label="Auffüllschwelle in Prozent Portfoliorendite"');
+      expect(card).toContain('value="7,0"');
+      expect(card).toContain('aria-label="Zielreserve in Jahresbedarfen"');
+      expect(card).toContain('Aktive Regel:');
+      expect(card).toContain('⅓ Geldmarkt / ⅔ Obligationen');
+      expect(card).toContain('nach Jahren &gt;7,0 % wieder auf 2 Jahresbedarfe auffüllen.');
+      expect(css).toMatch(/\.user-card\s*\{/);
+      expect(css).toMatch(/\.user-card-summary\s*\{/);
+    });
+
+    it('K52c: die Zusammenfassung nennt für jede Regel die konkrete Wirkung', () => {
+      const base = { reserveYears: 3, targetYears: 3, refillThreshold: 0.07 };
+      expect(activeRuleSummary({ ...base, refillRule: 'never' })).toBe(
+        '3 Jahresbedarfe Reserve · ⅓ Geldmarkt / ⅔ Obligationen · Reserve wird nie wieder aufgefüllt.',
+      );
+      expect(activeRuleSummary({ ...base, refillRule: 'portfolioAboveThreshold' })).toBe(
+        '3 Jahresbedarfe Reserve · ⅓ Geldmarkt / ⅔ Obligationen · nach Jahren >7,0 % wieder auf 3 Jahresbedarfe auffüllen.',
+      );
+      expect(activeRuleSummary({ ...base, refillRule: 'always' })).toContain(
+        'jährlich wieder auf 3 Jahresbedarfe auffüllen.',
+      );
+      expect(activeRuleSummary({ ...base, refillRule: 'equityPositive' })).toContain(
+        'nach Jahren mit positiver Aktienrendite',
+      );
+      expect(activeRuleSummary({ ...base, refillRule: 'aboveStart' })).toContain(
+        'oberhalb des Startvermögens',
+      );
+      // Abweichende Zielreserve erscheint im Satz.
+      expect(activeRuleSummary({ ...base, targetYears: 2, refillRule: 'always' })).toContain(
+        'wieder auf 2 Jahresbedarfe',
+      );
     });
 
     it('K53: der Reservebalken codiert 1/3 : 2/3 quantitativ', () => {

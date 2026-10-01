@@ -57,6 +57,7 @@ export const REFILL_SHORT_LABELS: Record<string, string> = {
   always: 'Jährlich auffüllen',
   equityPositive: 'Nach guten Jahren',
   aboveStart: 'Über Startwert auffüllen',
+  portfolioAboveThreshold: 'Nach Rendite-Schwelle',
 };
 
 /** Short usage label for a reserve-usage rule. */

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { runSimulation } from '../engine/simulation';
+import { normalizeEquityWeight, runSimulation } from '../engine/simulation';
 import { computeRobustness, type RobustnessMetrics } from '../engine/robustness';
 import { computeSensitivity, findCell, type SensitivityCell } from '../engine/sensitivity';
 import type { MarketScenario, SimulationInput, Strategy } from '../engine/types';
@@ -7,7 +7,7 @@ import { BaseInputs } from './BaseInputs';
 import { reserveInChf, reserveYearsFrom, ReserveInput, type ReserveState } from './ReserveInput';
 import { SectionPanel } from './SectionPanel';
 import { formatChf } from './format';
-import { formatYears } from './strategyVisuals';
+import { formatYears, reserveLabel } from './strategyVisuals';
 import { ScenarioMatrix } from './ScenarioMatrix';
 import { RobustnessTable } from './RobustnessTable';
 import { HeatmapLegend, SensitivityHeatmap } from './SensitivityHeatmap';
@@ -27,7 +27,7 @@ interface ComparisonViewProps {
   onApplyCombination: (equityWeight: number, reserveYears: number) => void;
 }
 
-type MobileBlock = 'table' | 'heatmap' | 'metrics';
+type MobileBlock = 'table' | 'metrics';
 
 /**
  * "Szenariovergleich" view: the same base situation tested against all
@@ -59,6 +59,10 @@ export function ComparisonView({
   const reserveYears = reserveYearsFrom(input, reserve);
   const reserveChf = reserveInChf(input, reserve);
 
+  // Header of the "Ausgangslage" card – identical to the simulation view.
+  const equityWeight = normalizeEquityWeight(input);
+  const equityMeta = `${(equityWeight * 100).toFixed(0)}/${((1 - equityWeight) * 100).toFixed(0)} · Reserve ${reserveLabel(reserveYears)}`;
+
   const { matrix, robustness } = useMemo(() => {
     const matrixOut: Record<string, Record<string, number>> = {};
     const robustnessOut: Record<string, RobustnessMetrics> = {};
@@ -81,6 +85,8 @@ export function ComparisonView({
       <SectionPanel
         id="ausgangslage"
         title="Ausgangslage"
+        subtitle="Deine Basis für alle Strategien"
+        meta={equityMeta}
         icon={<IconUser size={22} />}
         tone="blue"
       >
@@ -96,6 +102,7 @@ export function ComparisonView({
 
       <SectionPanel
         title="Szenario- und Strategievergleich"
+        subtitle={`Endvermögen (in CHF), nach ${input.duration} Jahren – alle Szenarien und Strategien auf einen Blick`}
         icon={<IconBarChart size={22} />}
         tone="indigo"
       >
@@ -106,13 +113,6 @@ export function ComparisonView({
             onClick={() => setMobileBlock('table')}
           >
             Tabelle
-          </button>
-          <button
-            type="button"
-            className={mobileBlock === 'heatmap' ? 'seg active' : 'seg'}
-            onClick={() => setMobileBlock('heatmap')}
-          >
-            Heatmap
           </button>
           <button
             type="button"
@@ -146,10 +146,13 @@ export function ComparisonView({
 
       <SectionPanel
         title="Sensitivitätsanalyse"
+        subtitle={`Endvermögen (Durchschnitt aller ${scenarios.length} Szenarien)`}
         icon={<IconShield size={22} />}
         tone="violet"
       >
-        <div className={`cmp-block${mobileBlock === 'heatmap' ? ' active' : ''}`}>
+        {/* Always visible – the heatmap has its own section and must not be
+            hidden by the mobile view toggle of the comparison section. */}
+        <div className="sensitivity-block">
           <div className="sensitivity-layout">
             <div className="sensitivity-grid">
               <SensitivityHeatmap

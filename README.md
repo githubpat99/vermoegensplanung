@@ -104,7 +104,7 @@ Drei Ansichten über die Tabs im Kopfbereich:
 
 | Tab | Inhalt |
 |---|---|
-| **Simulation** | Ein Szenario im Detail: Ausgangslage, Marktszenario, Ergebnis-Kacheln, Vermögensverlauf, Vergleich, weitere Auswertungen, Weitere Einstellungen, Jahresdetails |
+| **Simulation** | Ein Szenario im Detail: Ausgangslage, Strategien, Marktszenario, Ergebnisse, Weitere Einstellungen, Jahresdetails |
 | **Szenariovergleich** | Alle Szenarien × alle Strategien auf einmal, Robustheits-Kennzahlen und Sensitivitätsanalyse |
 | **Quellen** | Datengrundlage & Quellen |
 
@@ -113,22 +113,44 @@ Drei Ansichten über die Tabs im Kopfbereich:
 Mobile-first, kartenbasiert, ohne Excel-Look. Aufbau:
 
 1. **App-Header** – App-Icon, Produktname, Kernfrage, Tabs und Info-Button.
+   Darunter die Abschnitts-Navigation **Ausgangslage · Strategien ·
+   Marktszenario · ERGEBNISSE · Weitere Einstellungen · Jahresdetails**;
+   „Ergebnisse“ ist abgesetzt hervorgehoben und steht immer direkt nach dem
+   Marktszenario.
 2. **Ausgangslage** – Startvermögen, jährlicher Kapitalbedarf (mit CHF-Präfix),
    Aktien/Obligationen-Slider, Rebalancing-Schalter und Liquiditätsreserve
    (Angabe der Aufteilung 1/3 Geldmarkt / 2/3 Obligationen in CHF).
    Gleiche Kachel wie im Szenariovergleich.
-3. **Marktszenario** – historische und synthetische Szenarien als auswählbare
+3. **Strategien** – die vier Strategien mit Sichtbarkeits-Schalter und die
+   kompakte S4-Karte:
+   - **Reserve** (aus der Ausgangslage, für alle Strategien gleich),
+   - **Auffüllen: bei Portfoliorendite > x %** (Schwelle, Standard 7 %),
+   - **Zielreserve** in Jahresbedarfen,
+   - darunter der Satz **„Aktive Regel: …“**, der Reservehöhe, Aufteilung und
+     Auffüllbedingung in einer Zeile zusammenfasst.
+4. **Marktszenario** – historische und synthetische Szenarien als auswählbare
    Zeilen mit Untertitel.
-4. **Ergebnisse** (aufklappbar, Badge „Live aktualisiert“):
+5. **Ergebnisse** (aufklappbar, Badge „Live aktualisiert“):
    - farbige **Strategie-Kacheln** (Verwendungsregel der Reserve, Endvermögen und
      Veränderung zum Startvermögen),
    - **Vermögensverlauf** (Kennzahl umschaltbar: Gesamt-/investiertes Vermögen),
    - **Endvermögen im Vergleich** (Balken in Strategiefarbe),
    - aufklappbare **Weitere Auswertungen** (Zusammensetzung über die Zeit und
      Wirkung des Marktszenarios).
-5. **Weitere Einstellungen** – Startjahr, Dauer, **Bond-Annahmen** (historisch
-   oder fester Satz), Geldmarktzins, Strategien.
-6. **Jahresdetails** – alle Werte pro Jahr, inklusive der beiden Reserve-Töpfe.
+6. **Weitere Einstellungen** – Startjahr, Dauer, **Bond-Annahmen** (historisch
+   oder fester Satz), Geldmarktzins.
+7. **Jahresdetails** – alle Werte pro Jahr, inklusive der beiden Reserve-Töpfe
+   und der **Auffüllmechanik**: Portfoliorendite, Reserve vor der Auffüllung,
+   Auffüllbetrag und Reserve danach (Zeilen mit Auffüllung sind farblich
+   markiert).
+
+**Immer live:** Jede Änderung eines simulationsrelevanten Parameters rechnet
+alle Strategien sofort neu – es gibt keinen „Berechnen“- oder
+„Speichern“-Button und keinen Ansichtswechsel. Liegt der Ergebnisbereich dabei
+ausserhalb des sichtbaren Bereichs, blendet eine **kompakte Live-Ergebnisleiste**
+am unteren Rand das Endvermögen aller sichtbaren Strategien ein und springt auf
+Klick zum vollständigen Ergebnisbereich; dieser bleibt der primäre
+Ergebnisbereich.
 
 ### Szenariovergleich
 
@@ -148,13 +170,13 @@ Mobile-first, kartenbasiert, ohne Excel-Look. Aufbau:
   die Aufschlüsselung je Szenario. Mit **„Diese Kombination in Simulation
   anzeigen“** werden Aktienquote und Reserve übernommen und zur Simulation
   gewechselt.
-- Auf Mobilgeräten schaltet ein Segment-Control zwischen **Tabelle**, **Heatmap**
-  und **Kennzahlen** um.
+- Auf Mobilgeräten schaltet ein Segment-Control zwischen **Tabelle** und
+  **Kennzahlen** um. Die **Sensitivitätsanalyse** liegt in einer eigenen Kachel
+  und ist dort – unabhängig vom Ansicht-Schalter – immer sichtbar.
 
-Die Kacheln sind aufklappbar, zeigen in der Kopfzeile nur Icon und Titel (keine
-Nummerierung, keine Untertitel) und starten **alle eingeklappt**; auch die
-Szenario-Zeilen im Marktszenario sind zunächst zugeklappt. Die Navigation öffnet
-das gewählte Ziel automatisch.
+Die Kacheln sind aufklappbar, ohne Nummerierung und starten **alle
+eingeklappt**; auch die Szenario-Zeilen im Marktszenario sind zunächst
+zugeklappt. Die Navigation unter dem Header öffnet das gewählte Ziel.
 Reihenfolge (**S1–S4**) und Farben der Strategien bleiben in allen Ansichten stabil.
 Es gibt bewusst **keine Bewertung „beste Strategie“** – nur Zahlen und Kennzahlen.
 
@@ -238,7 +260,17 @@ Höhe wird einmal in der „Ausgangslage“ gewählt und gilt für alle Strategi
 | S1 | Nur verbrauchen | wird nur verbraucht, **nie** aufgefüllt |
 | S2 | Jährlich auffüllen | wird **jedes Jahr** auf den Zielwert aufgefüllt |
 | S3 | Nach guten Jahren | wird nur nach einem **positiven Aktienjahr** aufgefüllt |
-| S4 | Benutzerdefiniert | frei wählbar (Standard: nur auffüllen, solange das Gesamtvermögen **über dem Startwert** liegt) |
+| S4 | Benutzerdefiniert | frei wählbar (Standard: nur auffüllen, wenn die **Portfoliorendite** des Jahres **über 7 %** lag) |
+
+S4 ist die „vermeintlich intelligente“ Regel und lässt sich in der Kachel
+„Strategien“ kompakt einstellen: Schwelle in Prozent Portfoliorendite und
+Zielreserve in Jahresbedarfen. Die **Startreserve** kommt weiterhin aus der
+„Ausgangslage“ und gilt für alle Strategien; die Zielreserve darf davon
+abweichen (z. B. mit 1 Jahresbedarf starten und bei guten Jahren auf 3
+auffüllen). Die Zeile „Aktive Regel: …“ fasst die eingestellte Mechanik in
+einem Satz zusammen, und die Jahresdetails zeigen Jahr für Jahr, ob und wie
+viel tatsächlich aufgefüllt wurde – damit lässt sich im Szenariovergleich
+unmittelbar beurteilen, ob die Regel gegenüber S1–S3 etwas bringt.
 
 Die **Reservehöhe** und die **Aktien-/Obligationen-Verteilung** werden auf dem
 Screen „Ausgangslage“ eingestellt (100/0, 90/10, 80/20, 70/30 oder frei) und
@@ -247,9 +279,11 @@ eine Jahresbedarfszahl. Reihenfolge (S1–S4) und Farben bleiben in allen Ansich
 stabil.
 
 > **Reserve-Regler der Ausgangslage wirkt auf alle Strategien.** Er steuert die
-> Reservehöhe, die für S1–S4 identisch ist; der Wert ist im Regler selbst, in den
-> Kachel-Badges und in den Spaltentiteln des Vergleichs ablesbar. Die vier
-> Strategien unterscheiden sich ausschliesslich in der Verwendungsregel.
+> Startreserve, die für S1–S4 identisch ist; der Wert ist im Untertitel der
+> Sektion, in den Kachel-Badges und in den Spaltentiteln des Vergleichs
+> ablesbar. S4 darf zusätzlich eine abweichende Zielreserve und die
+> Auffüllschwelle setzen. Die vier Strategien unterscheiden sich ansonsten
+> ausschliesslich in der Verwendungsregel.
 
 > Die exakte Excel-Referenzlogik des ursprünglichen Prototyps lag beim Aufbau
 > nicht vor. Die Semantik oben ist eine saubere, dokumentierte Neu-Spezifikation.

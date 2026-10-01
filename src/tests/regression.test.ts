@@ -45,19 +45,19 @@ const ENGINE_BASELINE: Record<ScenarioKey, Record<Id, number>> = {
     S1: 845_972.2053079319,
     S2: 841_507.6057644244,
     S3: 854_380.4785110329,
-    S4: 959_320.8785089523,
+    S4: 854_380.4785110329,
   },
   good: {
     S1: 6_662_003.644940561,
     S2: 6_283_257.384645958,
     S3: 6_303_603.781674942,
-    S4: 6_283_257.384645958,
+    S4: 6_310_706.940452497,
   },
   zz: {
     S1: 184_095.67420008985,
     S2: 234_767.43006680754,
     S3: 265_267.87021245435,
-    S4: 193_106.00351744847,
+    S4: 265_267.87021245435,
   },
 };
 
@@ -113,8 +113,16 @@ describe('J – Referenzregression', () => {
     // the drawdown, so “consume only” beats “refill every year”.
     expect(engine.bad.S1).toBeGreaterThan(engine.bad.S2);
     expect(engine.bad.S3).toBeGreaterThan(engine.bad.S1);
-    expect(engine.bad.S4).toBeGreaterThan(engine.bad.S3);
-    // Rising market: the reserve costs equity exposure (all refill variants tie).
+    // S4 defaults to the 7 % threshold rule. In the historical stress and the
+    // sideways scenario exactly the same years clear the threshold as clear
+    // "equity return ≥ 0", so S4 walks the same path as S3 there.
+    expect(engine.bad.S4).toBeGreaterThanOrEqual(engine.bad.S3);
+    expect(engine.zz.S4).toBeGreaterThanOrEqual(engine.zz.S3);
+    // Rising market: the reserve costs equity exposure, and the threshold rule
+    // refills less often than S2/S3 – it therefore keeps the most capital
+    // invested of the three refill variants.
+    expect(engine.good.S1).toBeGreaterThan(engine.good.S4);
+    expect(engine.good.S4).toBeGreaterThan(engine.good.S3);
     expect(engine.good.S1).toBeGreaterThan(engine.good.S2);
     // Sideways market: an active refill rule clearly helps.
     expect(engine.zz.S2).toBeGreaterThan(engine.zz.S1);

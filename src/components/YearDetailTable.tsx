@@ -1,11 +1,18 @@
 import type { MarketScenario, StrategyResult } from '../engine/types';
 import { formatChf, formatChfSigned, formatPercent } from './format';
+import { formatYears } from './strategyVisuals';
 
 interface YearDetailTableProps {
   results: StrategyResult[];
   selectedStrategyId: string;
   onSelectStrategy: (id: string) => void;
   scenario: MarketScenario;
+}
+
+/** A reserve amount expressed in annual needs, e.g. 116'000 / 72'500 → "1,6 J.". */
+function reserveYearsOf(reserve: number, annualNeed: number): string {
+  if (annualNeed <= 0) return '–';
+  return `${formatYears(reserve / annualNeed)} J.`;
 }
 
 export function YearDetailTable({
@@ -36,7 +43,10 @@ export function YearDetailTable({
         {scenario.type === 'historical'
           ? `Historisches Szenario – jedes Simulationsjahr wird auf ein Referenzjahr abgebildet (z. B. ${result.years[0]?.year} → ${scenario.equitySeries.indexName} ${scenario.referenceYears[0] ?? ''}).`
           : 'Modellszenario – kein historisches Referenzjahr. Der Bondverlauf ist historisch hinterlegt.'}{' '}
-        Die Liquiditätsreserve ist immer 1/3 Geldmarkt und 2/3 Obligationen.
+        Die Liquiditätsreserve ist immer 1/3 Geldmarkt und 2/3 Obligationen. „Rendite %“ ist die
+        gewichtete Rendite des investierten Portfolios (Aktien + Bonds) – die Grösse, auf die die
+        S4-Schwelle reagiert. „Reserve vor Auff.“ ist die Reserve nach der Entnahme, „Auffüllung“ der
+        Betrag, der danach aus dem Portfolio in die Reserve fliesst.
       </p>
 
       <div className="table-scroll">
@@ -52,6 +62,7 @@ export function YearDetailTable({
               <th scope="col" className="num">Bonds Anfg.</th>
               <th scope="col" className="num">Bondrend. %</th>
               <th scope="col" className="num">Bondrend. CHF</th>
+              <th scope="col" className="num">Rendite %</th>
               <th scope="col" className="num">Reserve Anfg.</th>
               <th scope="col" className="num">Res. Geldm. 1/3</th>
               <th scope="col" className="num">Res. Obli 2/3</th>
@@ -61,6 +72,9 @@ export function YearDetailTable({
               <th scope="col" className="num">Entn. Reserve</th>
               <th scope="col" className="num">Entn. Aktien</th>
               <th scope="col" className="num">Entn. Bonds</th>
+              <th scope="col" className="num">Reserve vor Auff.</th>
+              <th scope="col" className="num">Auffüllung</th>
+              <th scope="col" className="num">Reserve neu</th>
               <th scope="col">Rebal.</th>
               <th scope="col" className="num">Aktien Ende</th>
               <th scope="col" className="num">Bonds Ende</th>
@@ -70,7 +84,15 @@ export function YearDetailTable({
           </thead>
           <tbody>
             {result.years.map((y) => (
-              <tr key={y.year} className={y.depleted ? 'row-depleted' : undefined}>
+              <tr
+                key={y.year}
+                className={[
+                  y.depleted ? 'row-depleted' : '',
+                  y.refillAmount > 0 ? 'row-refill' : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ') || undefined}
+              >
                 <th scope="row">{y.year}</th>
                 <td>{y.referenceYear ?? '–'}</td>
                 <td className="num">{formatChf(y.equityStart)}</td>
@@ -79,6 +101,7 @@ export function YearDetailTable({
                 <td className="num">{formatChf(y.bondStart)}</td>
                 <td className="num">{formatPercent(y.bondReturn)}</td>
                 <td className="num">{formatChfSigned(y.bondReturnChf)}</td>
+                <td className="num">{formatPercent(y.portfolioReturn, 1)}</td>
                 <td className="num">{formatChf(y.reserveStart)}</td>
                 <td className="num">{formatChf(y.reserveMoneyMarket)}</td>
                 <td className="num">{formatChf(y.reserveBonds)}</td>
@@ -88,6 +111,9 @@ export function YearDetailTable({
                 <td className="num">{formatChf(y.withdrawalFromReserve)}</td>
                 <td className="num">{formatChf(y.withdrawalFromEquity)}</td>
                 <td className="num">{formatChf(y.withdrawalFromBond)}</td>
+                <td className="num">{reserveYearsOf(y.reserveBeforeRefill, y.capitalNeed)}</td>
+                <td className="num">{y.refillAmount > 0 ? formatChf(y.refillAmount) : '–'}</td>
+                <td className="num strong">{reserveYearsOf(y.reserveEnd, y.capitalNeed)}</td>
                 <td title={y.rationale}>
                   {y.rebalanced ? 'ja' : 'nein'}
                   <span className="sub"> {Math.round(y.equityWeightAfterRebalance * 100)} %</span>

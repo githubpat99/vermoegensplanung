@@ -90,6 +90,17 @@ export function IconInfo(p: IconProps) {
   );
 }
 
+/** Layered stack icon – "Strategien". */
+export function IconLayers(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <path d="m12 3.5 8 4.5-8 4.5-8-4.5Z" />
+      <path d="m4 12.5 8 4.5 8-4.5" />
+      <path d="m4 16.5 8 4.5 8-4.5" />
+    </svg>
+  );
+}
+
 /** Chevron pointing down. */
 export function IconChevronDown(p: IconProps) {
   return (

@@ -35,10 +35,10 @@ liegende Excel-Datei beim Aufbau nicht verfügbar war.
 | H – Rebalancing-Erhaltung | `src/tests/rebalancing.test.ts` | 3 | Rebalancing erhält das Gesamtvermögen exakt |
 | I – Extremfälle | `src/tests/edgeCases.test.ts` | 6 | Aktien −100 %, Reserve 0, Bonds 0, Bedarf 0, Bedarf > Vermögen → „Vermögen aufgebraucht“ |
 | J – Referenzregression | `src/tests/regression.test.ts` | 4 | Golden Master + dokumentierte Excel-Abweichung + qualitative Muster |
-| K – UI | `src/tests/ui.test.tsx` | 58 | Tabs, App-Header, Abschnitts-Kacheln (nur Titel, ohne Nummerierung/Untertitel, standardmässig eingeklappt), Ergebnis-Kacheln, Grafiken, Bedienelemente, Szenariovergleich (Matrix/Robustheit/Heatmap/Ausgewähltes Feld), PWA-Manifest, Reserve-Regler der Ausgangslage, Reserve-Aufteilung und Bond-Annahmen |
+| K – UI | `src/tests/ui.test.tsx` | 64 | Tabs, App-Header, Abschnitts-Navigation (inkl. hervorgehobenem „Ergebnisse“), Abschnitts-Kacheln (ohne Nummerierung, standardmässig eingeklappt), Ergebnis-Kacheln, kompakte Live-Ergebnisleiste, kompakte S4-Karte mit Aktiv-Regel-Satz, Jahresdetail mit Auffüllmechanik, Grafiken, Bedienelemente, Szenariovergleich (Matrix/Robustheit/Heatmap/Ausgewähltes Feld), PWA-Manifest, Reserve-Regler der Ausgangslage, Reserve-Aufteilung und Bond-Annahmen |
 | L – Robustheit & Sensitivität | `src/tests/robustness.test.ts` | 9 | Median, Drawdown, Kennzahlen, Sensitivitätsraster |
-| M – Liquiditätsreserve | `src/tests/reserve.test.ts` | 12 | Aufteilung 1/3 Geldmarkt / 2/3 Obli, Verzinsung, Entnahme zuerst aus der Reserve, Reservehöhe für alle Strategien, Wirkung je Marktphase, fixe vs. historische Bondrendite |
-| **Total** | | **156** | |
+| M – Liquiditätsreserve | `src/tests/reserve.test.ts` | 16 | Aufteilung 1/3 Geldmarkt / 2/3 Obli, Verzinsung, Entnahme zuerst aus der Reserve, Reservehöhe für alle Strategien, Wirkung je Marktphase, fixe vs. historische Bondrendite, Portfoliorendite, S4-Schwellenregel, Zielreserve und Auffüllbeträge |
+| **Total** | | **166** | |
 
 Ergänzend zur automatisierten UI-Prüfung wurden die Screens im echten Browser
 bei 1920×1080, 1366×768 und 390×844 geprüft (Abschnitt 6).
@@ -55,6 +55,9 @@ Drei Ansichten über die Kopf-Tabs: **Simulation | Szenariovergleich | Quellen**
 | **Vermögensverlauf** (Kennzahl umschaltbar) | Szenario und Strategie über die Jahre |
 | **Endvermögen im Vergleich** (Balken) | Strategie |
 | **Weitere Auswertungen** (aufklappbar) | Zusammensetzung über die Zeit und Wirkung des Marktszenarios |
+| **Kompakte S4-Karte** (Abschnitt „Strategien“) | Auffüllschwelle in % Portfoliorendite und Zielreserve, plus Satz „Aktive Regel: …“ |
+| **Live-Ergebnisleiste** (fixiert, nur wenn „Ergebnisse“ ausserhalb des Viewports) | Endvermögen aller sichtbaren Strategien bei jeder Parameteränderung |
+| **Jahresdetails** | pro Jahr: Portfoliorendite, Reserve vor Auffüllung, Auffüllbetrag, Reserve danach |
 
 ### Szenariovergleich
 
@@ -66,17 +69,22 @@ Drei Ansichten über die Kopf-Tabs: **Simulation | Szenariovergleich | Quellen**
 | Sensitivitätsanalyse | Heatmap Aktienquote × Reserve, Ø über alle Szenarien, grün = höher |
 | Ausgewähltes Feld | Kombination + Durchschnitt + Aufschlüsselung, Button „in Simulation anzeigen“ |
 
-Auf Mobilgeräten schaltet ein Segment-Control zwischen Tabelle, Heatmap und
-Kennzahlen um. Es gibt **keine Bewertung „beste Strategie“**.
+Auf Mobilgeräten schaltet ein Segment-Control zwischen Tabelle und Kennzahlen
+um; die Sensitivitätsanalyse hat eine eigene Kachel und ist dort immer sichtbar.
+Es gibt **keine Bewertung „beste Strategie“**.
 
 **Stabile Reihenfolge und Farben:** Die Strategien werden in allen Ansichten
 immer in der Reihenfolge **S1–S4** geführt – nie nach Wert umsortiert. Jede
 Strategie hat eine feste Farbe (`S1` navy, `S2` sky, `S3` violett, `S4` grün).
 
-**Startzustand:** Alle Kacheln sind eingeklappt und zeigen in der Kopfzeile nur
-Icon und Titel (keine Nummerierung, keine Untertitel); die Szenario-Zeilen im
-Marktszenario sind ebenfalls zugeklappt. Die Navigation öffnet das gewählte Ziel
-automatisch.
+**Startzustand:** Alle Kacheln sind eingeklappt und ohne Nummerierung; die
+Szenario-Zeilen im Marktszenario sind ebenfalls zugeklappt. Die
+Abschnitts-Navigation unter dem Header führt in der Reihenfolge
+Ausgangslage · Strategien · Marktszenario · **ERGEBNISSE** · Weitere
+Einstellungen · Jahresdetails; „Ergebnisse“ ist hervorgehoben und steht immer
+direkt nach dem Marktszenario. Beim Bearbeiten ausserhalb des Ergebnisbereichs
+zeigt eine kompakte Live-Ergebnisleiste das Endvermögen aller sichtbaren
+Strategien.
 
 ## 3. Rechenkern – verifizierte Eigenschaften
 
@@ -98,7 +106,7 @@ Strategien. Verglichen wird die **Verwendung** der Reserve:
 - S1 „Nur verbrauchen“ ⟷ Excel „1-Jahres-Puffer“ (wird verbraucht, nicht ersetzt)
 - S2 „Jährlich auffüllen“ ⟷ kein Excel-Gegenstück
 - S3 „Nach guten Jahren“ ⟷ Excel „3-Jahres-Puffer“
-- S4 „Benutzerdefiniert“ (über Startwert) ⟷ kein Excel-Gegenstück
+- S4 „Benutzerdefiniert“ (Portfoliorendite > 7 %) ⟷ kein Excel-Gegenstück
 
 **Endvermögen in CHF**
 
@@ -117,9 +125,12 @@ Strategien. Verglichen wird die **Verwendung** der Reserve:
 **Qualitative Muster, die die saubere Engine reproduziert:**
 
 - Fallende/sequenzgestresste Märkte: **Auffüllen im Abschwung erzwingt Verkäufe**,
-  deshalb S4 (über Startwert) > S3 (nach guten Jahren) > S1 (nie) > S2 (jährlich).
-- Stark steigende Märkte: die Reserve kostet Aktienengagement, S1 > S2 = S3 = S4.
-- Im Seitwärtsmarkt hilft eine aktive Auffüllung deutlich: S3 > S2 > S4 > S1.
+  deshalb S3 ≥ S4 (Schwellenregel) > S1 (nie) > S2 (jährlich). Im historischen
+  Stressszenario greifen bei S4 exakt dieselben Auffülljahre wie bei S3
+  (Portfoliorendite > 7 % ⟺ Aktienrendite ≥ 0), die Pfade sind daher identisch.
+- Stark steigende Märkte: die Reserve kostet Aktienengagement, und die
+  Schwellenregel füllt seltener auf als S2/S3: S1 > S4 > S3 > S2.
+- Im Seitwärtsmarkt hilft eine aktive Auffüllung deutlich: S3 = S4 > S2 > S1.
 
 ### Reserve-Modell (Revision nach Review)
 
@@ -168,13 +179,15 @@ bit-identische Kachelwerte). Korrektur:
   (`buildStrategies(equityWeight, { reserveYears })`).
 - Damit die vier Strategien nicht identisch sind, unterscheiden sie sich neu in
   der **Verwendung** der Reserve (Auffüllregel) statt in ihrer Höhe –
-  S1 nie / S2 jährlich / S3 nach positivem Aktienjahr / S4 frei.
+  S1 nie / S2 jährlich / S3 nach positivem Aktienjahr / S4 frei
+  (Standard: Portfoliorendite des Jahres > 7 %, Zielreserve frei wählbar).
 - Der frühere zweite Reserve-Slider im Bereich „Strategien“ wurde entfernt
-  (keine Doppelsteuerung).
+  (keine Doppelsteuerung); S4 hat in der kompakten Karte nur noch Schwelle und
+  Zielreserve. Die Startreserve kommt für alle Strategien aus der Ausgangslage.
 - Konsistenznachweis: S3 bei Reserve n liefert **exakt** dasselbe Endvermögen
   wie die parametrisierte Reserve-Strategie mit derselben Höhe (Gruppe M11).
 
-Abgesichert durch Gruppe M1–M12 (Engine) und K46–K52 (UI).
+Abgesichert durch Gruppe M1–M16 (Engine) und K46–K52c (UI).
 
 ## 5. Bekannte Abweichungen und Ursachen
 
@@ -187,6 +200,7 @@ Abgesichert durch Gruppe M1–M12 (Engine) und K46–K52 (UI).
 | 5 | Die Excel-Strategie-IDs sind nicht mehr 1:1 übertragbar | Die Strategien vergleichen neu die **Verwendung** der Reserve, nicht ihre Höhe. Die Zuordnung zu den Excel-Puffern ist daher nur noch sinngemäss (siehe Abschnitt 4). |
 | 6 | Strategienamen ohne „80/20“, ohne „Puffer“ und ohne Jahresbedarfszahl | Verteilung und Reservehöhe liegen in der Ausgangslage; die Namen beschreiben nur noch die Verwendungsregel. |
 | 7 | Ein Drittel der Reserve wird mit 0 % (Geldmarktzins) verzinst | Vorgabe des Nutzers („orientiert am aktuellen Leitzins“). Folge: Die Reserve kostet in vier von fünf Szenarien Ertrag – bewusst nicht geglättet. Der Satz ist in den Einstellungen änderbar. |
+| 8 | S4-Standardregel neu: „Portfoliorendite des Jahres > 7 %“ statt „über Startwert“ | Anforderung des Nutzers (kompakte S4-Karte mit Schwelle und Zielreserve). Der Golden Master in Gruppe J1 wurde entsprechend neu eingefroren; die Excel-Abweichungen der Strategien S1–S3 sind unverändert. |
 
 Keine stillen Zahlenmanipulationen, keine Dummy-Werte, keine TODO-Platzhalter
 in der produktiven Simulation.
@@ -226,9 +240,9 @@ sind in `.table-scroll` gekapselt und scrollen lokal; Beträge sind mit
    zulassen, oder bleibt die spec-konforme Deckelung bei 0 mit Status
    „Vermögen aufgebraucht“ bestehen?
 4. **Reserve-Konzept:** Sollen die Strategien ihre eigene Reservehöhe festlegen
-   (aktuell S1 = 0, S2 = 1 Jahresbedarf, S3 = 3 Jahresbedarfe, S4 frei) oder immer
-   die auf dem Screen
-   „Ausgangslage“ eingegebene Reserve verwenden?
+   (aktuell: gemeinsame **Startreserve** aus der „Ausgangslage“; nur S4 darf
+   zusätzlich eine abweichende **Zielreserve** und die Auffüllschwelle setzen)
+   oder soll auch die Zielreserve für alle gleich sein?
 5. **Bond-Szenario bei Modellläufen:** Bestätigung des Defaults (historische
    Bondsequenz 1999–2013) sowie ob Option „konstante Modellrendite“ in V1
    relevant ist.

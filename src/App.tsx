@@ -13,6 +13,8 @@ import { MoreSettings } from './components/MoreSettings';
 import { ScenarioSelector } from './components/ScenarioSelector';
 import { StrategyControls } from './components/StrategyControls';
 import { StrategyTiles } from './components/StrategyTiles';
+import { UserStrategyCard } from './components/UserStrategyCard';
+import { LiveResultBar } from './components/LiveResultBar';
 import { ComparisonChart } from './components/ComparisonChart';
 import { WealthChart } from './components/WealthChart';
 import { CompositionChart } from './components/CompositionChart';
@@ -25,10 +27,12 @@ import {
   IconBarChart,
   IconBook,
   IconGear,
+  IconLayers,
   IconTable,
   IconTrend,
   IconUser,
 } from './components/icons';
+import { reserveLabel } from './components/strategyVisuals';
 
 const ALL_IDS = ['S1', 'S2', 'S3', 'S4'];
 
@@ -84,6 +88,10 @@ export default function App({ initialMode = 'simulation' }: { initialMode?: AppM
     () => Object.fromEntries(strategies.map((s) => [s.id, s.params.refillRule])),
     [strategies],
   );
+
+  // Refill target of the user-defined strategy S4 (defaults to the reserve
+  // height from the "Ausgangslage").
+  const targetReserveYears = userParams.targetReserveYears ?? reserveYears;
 
   // All scenarios with the currently selected bond overlay applied.
   const allScenarios = useMemo(
@@ -176,6 +184,7 @@ export default function App({ initialMode = 'simulation' }: { initialMode?: AppM
           <StaticPanel
             id="quellen"
             title="Datengrundlage & Quellen"
+            subtitle="MSCI World, Bloomberg U.S. Aggregate, Methodik"
             icon={<IconBook size={22} />}
             tone="green"
           >
@@ -186,16 +195,20 @@ export default function App({ initialMode = 'simulation' }: { initialMode?: AppM
         <main>
           <nav className="subnav" aria-label="Abschnitte">
             <a href="#ausgangslage" onClick={goTo('ausgangslage')}>Ausgangslage</a>
+            <a href="#strategien" onClick={goTo('strategien')}>Strategien</a>
             <a href="#szenario" onClick={goTo('szenario')}>Marktszenario</a>
-            <a href="#ergebnisse" onClick={goTo('ergebnisse')}>Ergebnisse</a>
-            <a href="#einstellungen" onClick={goTo('einstellungen')}>Einstellungen</a>
+            <a href="#ergebnisse" className="nav-result" onClick={goTo('ergebnisse')}>Ergebnisse</a>
+            <a href="#einstellungen" onClick={goTo('einstellungen')}>Weitere Einstellungen</a>
+            <a href="#jahresdetail" onClick={goTo('jahresdetail')}>Jahresdetails</a>
           </nav>
 
           <SectionPanel
             id="ausgangslage"
             title="Ausgangslage"
+            subtitle="Deine Basis für alle Strategien"
             icon={<IconUser size={22} />}
             tone="blue"
+            meta={`${(equityWeight * 100).toFixed(0)}/${((1 - equityWeight) * 100).toFixed(0)} · Reserve ${reserveLabel(reserveYears)}`}
           >
             <InputPanel
               input={effectiveInput}
@@ -207,10 +220,32 @@ export default function App({ initialMode = 'simulation' }: { initialMode?: AppM
           </SectionPanel>
 
           <SectionPanel
+            id="strategien"
+            title="Strategien"
+            subtitle="Vier Regeln für dieselbe Reserve – S4 ist frei einstellbar"
+            icon={<IconLayers size={22} />}
+            tone="green"
+          >
+            <StrategyControls
+              strategies={strategies}
+              visibleIds={visibleIds}
+              onToggle={toggleVisibility}
+            />
+            <UserStrategyCard
+              reserveYears={reserveYears}
+              targetYears={targetReserveYears}
+              userParams={userParams}
+              onUserParamsChange={(patch) => setUserParams((prev) => ({ ...prev, ...patch }))}
+            />
+          </SectionPanel>
+
+          <SectionPanel
             id="szenario"
             title="Marktszenario"
+            subtitle="Gegen welche Marktphase willst du deinen Plan testen?"
             icon={<IconTrend size={22} />}
             tone="indigo"
+            meta={shortScenarioName(scenario.name)}
           >
             <ScenarioSelector
               scenarios={ALL_SCENARIOS}
@@ -264,23 +299,18 @@ export default function App({ initialMode = 'simulation' }: { initialMode?: AppM
           <SectionPanel
             id="einstellungen"
             title="Weitere Einstellungen"
+            subtitle="Startjahr, Dauer, eigene Szenarien, Bond-Annahmen"
             icon={<IconGear size={22} />}
             tone="slate"
             defaultOpen={false}
           >
             <MoreSettings input={effectiveInput} onChange={updateInput} />
-            <StrategyControls
-              strategies={strategies}
-              visibleIds={visibleIds}
-              onToggle={toggleVisibility}
-              userParams={userParams}
-              onUserParamsChange={(patch) => setUserParams((prev) => ({ ...prev, ...patch }))}
-            />
           </SectionPanel>
 
           <SectionPanel
             id="jahresdetail"
             title="Jahresdetails"
+            subtitle="Alle Werte pro Jahr im Detail"
             icon={<IconTable size={22} />}
             tone="amber"
             defaultOpen={false}
@@ -292,6 +322,8 @@ export default function App({ initialMode = 'simulation' }: { initialMode?: AppM
               scenario={scenario}
             />
           </SectionPanel>
+
+          <LiveResultBar results={results} visibleIds={visibleIds} />
         </main>
       )}
 

@@ -1,3 +1,4 @@
+import { DEFAULT_REFILL_THRESHOLD } from './types';
 import type {
   RefillRule,
   Strategy,
@@ -58,8 +59,8 @@ function dynamicEquityWeight(history: number[], baseWeight: number): number {
   return w;
 }
 
-function shouldRefill(rule: RefillRule, ctx: StrategyContext): boolean {
-  switch (rule) {
+function shouldRefill(params: StrategyParams, ctx: StrategyContext): boolean {
+  switch (params.refillRule) {
     case 'always':
       return true;
     case 'equityPositive':
@@ -68,9 +69,16 @@ function shouldRefill(rule: RefillRule, ctx: StrategyContext): boolean {
       const total = ctx.equityStart + ctx.bondStart + ctx.reserveStart;
       return total >= ctx.input.initialCapital;
     }
+    case 'portfolioAboveThreshold':
+      return ctx.portfolioReturn > (params.refillThreshold ?? DEFAULT_REFILL_THRESHOLD);
     case 'never':
       return false;
   }
+}
+
+/** Format a decimal threshold as a Swiss percentage, e.g. 0.07 → "7,0 %". */
+export function formatThreshold(threshold: number): string {
+  return `${(threshold * 100).toFixed(1).replace('.', ',')} %`;
 }
 
 /** Short explanation of the reserve-usage rule for the yearly detail table. */
@@ -79,7 +87,19 @@ const REFILL_RATIONALE: Record<RefillRule, string> = {
   always: 'Reserve jährlich aufgefüllt',
   equityPositive: 'Reserve nach positivem Aktienjahr aufgefüllt',
   aboveStart: 'Reserve aufgefüllt (Vermögen über Startwert)',
+  portfolioAboveThreshold: 'Reserve nicht aufgefüllt (Schwelle nicht erreicht)',
 };
+
+/** Rationale of the current rule, including the configured threshold. */
+function refillRationale(params: StrategyParams, refillAllowed: boolean): string {
+  if (params.refillRule !== 'portfolioAboveThreshold') {
+    return REFILL_RATIONALE[params.refillRule];
+  }
+  const threshold = formatThreshold(params.refillThreshold ?? DEFAULT_REFILL_THRESHOLD);
+  return refillAllowed
+    ? `Reserve aufgefüllt (Portfoliorendite über ${threshold})`
+    : `Reserve nicht aufgefüllt (Portfoliorendite höchstens ${threshold})`;
+}
 
 /** Generic decision function driven by {@link StrategyParams}. */
 function decideWithParams(ctx: StrategyContext, params: StrategyParams): StrategyDecision {
@@ -100,17 +120,21 @@ function decideWithParams(ctx: StrategyContext, params: StrategyParams): Strateg
     parts.push('ohne Liquiditätsreserve');
   }
 
-  const refill = shouldRefill(params.refillRule, ctx);
+  const refill = shouldRefill(params, ctx);
+  const targetYears = params.targetReserveYears ?? reserveYears;
+  if (!hasAbsolute && params.targetReserveYears != null && params.targetReserveYears !== params.reserveYears) {
+    parts.push(`Zielreserve ${String(targetYears).replace('.', ',')} Jahresbedarf(e)`);
+  }
   const reserveTarget = hasAbsolute
     ? Math.max(0, params.reserveAbsolute as number)
-    : reserveYears * ctx.input.annualNeed;
+    : targetYears * ctx.input.annualNeed;
 
   return {
     reserveTarget,
     refill,
     equityWeight,
     rebalance: params.rebalance,
-    rationale: [REFILL_RATIONALE[params.refillRule], ...parts].join(' · '),
+    rationale: [refillRationale(params, refill), ...parts].join(' · '),
   };
 }
 
@@ -191,11 +215,13 @@ export const STRATEGIES: Strategy[] = [
     'S4',
     'Benutzerdefiniert',
     'Individuell',
-    'Frei konfigurierbare Auffüllregel (Standard: nur auffüllen, solange das Gesamtvermögen über dem Startwert liegt). Die Reservehöhe kommt aus der „Ausgangslage“.',
+    'Frei konfigierbare Auffüllregel: Standard ist „erst auffüllen, wenn die Portfoliorendite des Jahres über der Schwelle lag“ (7 %). Die Reservehöhe kommt aus der „Ausgangslage“, die Zielreserve ist frei wählbar.',
     {
       reserveYears: 2,
       reserveAbsolute: null,
-      refillRule: 'aboveStart',
+      refillRule: 'portfolioAboveThreshold',
+      refillThreshold: DEFAULT_REFILL_THRESHOLD,
+      targetReserveYears: null,
       rebalance: true,
       equityWeight: 0.8,
       dynamicReserve: false,
@@ -216,12 +242,13 @@ export function withParams(strategy: Strategy, params: Partial<StrategyParams>):
   return { ...strategy, params: { ...strategy.params, ...params } };
 }
 
-/** Human readable labels for the four reserve-usage rules. */
+/** Human readable labels for the reserve-usage rules. */
 export const REFILL_RULE_LABELS: Record<RefillRule, string> = {
   never: 'Nie auffüllen',
   always: 'Jährlich auffüllen',
   equityPositive: 'Nach guten Jahren auffüllen',
   aboveStart: 'Nur über Startwert auffüllen',
+  portfolioAboveThreshold: 'Bei Portfoliorendite über Schwelle auffüllen',
 };
 
 /**
@@ -252,12 +279,20 @@ export function buildStrategies(
       years === 0
         ? 'ohne Liquiditätsreserve'
         : `mit ${yearsText} Jahresbedarfen Liquiditätsreserve`;
+    const targetText =
+      params.targetReserveYears != null && params.targetReserveYears !== years
+        ? ` Zielreserve ${String(params.targetReserveYears).replace('.', ',')} Jahresbedarfe.`
+        : '';
+    const thresholdText =
+      params.refillRule === 'portfolioAboveThreshold'
+        ? ` (Schwelle ${formatThreshold(params.refillThreshold ?? DEFAULT_REFILL_THRESHOLD)})`
+        : '';
 
     return {
       ...s,
       description:
-        `Frei konfigurierbare Strategie ${reserveText}, aktuell „${REFILL_RULE_LABELS[params.refillRule]}“. ` +
-        'Reservehöhe und Aktienquote kommen aus der „Ausgangslage“.',
+        `Frei konfigurierbare Strategie ${reserveText}, aktuell „${REFILL_RULE_LABELS[params.refillRule]}“${thresholdText}.` +
+        `${targetText} Reservehöhe und Aktienquote kommen aus der „Ausgangslage“.`,
       params,
     };
   });

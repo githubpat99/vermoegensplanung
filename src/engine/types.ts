@@ -101,12 +101,23 @@ export interface MarketScenario {
 /**
  * How a strategy replenishes the liquidity reserve.
  *
- *  - `never`          – the reserve is only consumed, never refilled.
- *  - `always`         – the reserve is refilled to its target every year.
- *  - `equityPositive` – only after a year with a non-negative equity return.
- *  - `aboveStart`     – only while the total capital is above its start value.
+ *  - `never`                 – the reserve is only consumed, never refilled.
+ *  - `always`                – the reserve is refilled to its target every year.
+ *  - `equityPositive`        – only after a year with a non-negative equity return.
+ *  - `aboveStart`            – only while the total capital is above its start value.
+ *  - `portfolioAboveThreshold` – only after a year whose *portfolio* return
+ *                              (invested equity + bonds, weighted) exceeded the
+ *                              configured threshold (S4).
  */
-export type RefillRule = 'always' | 'equityPositive' | 'never' | 'aboveStart';
+export type RefillRule =
+  | 'always'
+  | 'equityPositive'
+  | 'never'
+  | 'aboveStart'
+  | 'portfolioAboveThreshold';
+
+/** Default threshold for {@link RefillRule} `portfolioAboveThreshold` (7 %). */
+export const DEFAULT_REFILL_THRESHOLD = 0.07;
 
 /**
  * Source of the bond return.
@@ -127,6 +138,16 @@ export interface StrategyParams {
   reserveAbsolute: number | null;
   /** When to replenish the reserve from the invested portfolio. */
   refillRule: RefillRule;
+  /**
+   * Threshold (decimal, e.g. 0.07 = 7 %) for the rule
+   * `portfolioAboveThreshold`. Falls back to {@link DEFAULT_REFILL_THRESHOLD}.
+   */
+  refillThreshold?: number;
+  /**
+   * Refill target in annual needs. `null`/absent = the reserve height chosen in
+   * the "Ausgangslage" (used by S4 to top the reserve up to a different level).
+   */
+  targetReserveYears?: number | null;
   /** Whether the invested portfolio is rebalanced every year. */
   rebalance: boolean;
   /** Target equity weight of the invested portfolio, 0..1. */
@@ -156,6 +177,12 @@ export interface StrategyContext {
   equityReturn: number;
   /** Bond return of the current year (decimal). */
   bondReturn: number;
+  /**
+   * Return of the invested portfolio this year (decimal): the weighted return
+   * of the equity and bond sleeves, before any withdrawal. This is the figure
+   * the S4 threshold rule reacts to.
+   */
+  portfolioReturn: number;
   /** Equity returns of all years up to and including the current one. */
   equityReturnHistory: number[];
 }
@@ -206,12 +233,23 @@ export interface YearResult {
   reserveReturn: number;
   /** Return earned by the liquidity reserve this year in CHF. */
   reserveReturnChf: number;
+  /**
+   * Return of the invested portfolio this year (decimal). Basis for the S4
+   * threshold rule ("auffüllen bei Portfoliorendite > x %").
+   */
+  portfolioReturn: number;
   capitalNeed: number;
   withdrawalFromReserve: number;
   withdrawalFromEquity: number;
   withdrawalFromBond: number;
   /** Unmet need if the capital was exhausted (0 in normal years). */
   unmetNeed: number;
+  /** Reserve right after the withdrawal and before the refill step. */
+  reserveBeforeRefill: number;
+  /** Amount actually moved from the invested portfolio into the reserve. */
+  refillAmount: number;
+  /** Reserve level (CHF) the strategy aimed for this year. */
+  reserveTarget: number;
   rebalanced: boolean;
   equityWeightAfterRebalance: number;
   equityEnd: number;

@@ -86,7 +86,7 @@ describe('M – Liquiditätsreserve', () => {
         'never',
         'always',
         'equityPositive',
-        'aboveStart',
+        'portfolioAboveThreshold',
       ]);
     }
   });
@@ -171,5 +171,75 @@ describe('M – Liquiditätsreserve', () => {
     const result = runSimulation(refInput(), SCENARIO_BAD_YEARS, absolute);
     expect(result.years[0].reserveStart).toBeCloseTo(218_000, 6);
     expect(result.initialReserve).toBeCloseTo(218_000, 6);
+  });
+
+  it('M13: die Portfoliorendite ist die gewichtete Rendite des investierten Portfolios', () => {
+    const result = runSimulation(refInput(), SCENARIO_BAD_YEARS, getStrategy('S3'));
+    for (const y of result.years) {
+      const invested = y.equityStart + y.bondStart;
+      if (invested > 0) {
+        expect(y.portfolioReturn).toBeCloseTo(
+          (y.equityReturnChf + y.bondReturnChf) / invested,
+          12,
+        );
+        // Als gewichteter Mittelwert liegt sie zwischen Aktien- und Bondrendite.
+        expect(y.portfolioReturn).toBeGreaterThanOrEqual(Math.min(y.equityReturn, y.bondReturn) - 1e-12);
+        expect(y.portfolioReturn).toBeLessThanOrEqual(Math.max(y.equityReturn, y.bondReturn) + 1e-12);
+      }
+    }
+  });
+
+  it('M14: die S4-Schwelle füllt nur nach Jahren über der Portfoliorendite auf', () => {
+    const s4 = buildStrategies(0.8, { reserveYears: 2 }).find((s) => s.id === 'S4')!;
+    expect(s4.params.refillRule).toBe('portfolioAboveThreshold');
+    expect(s4.params.refillThreshold).toBeCloseTo(0.07, 12);
+
+    const result = runSimulation(refInput(), SCENARIO_BAD_YEARS, s4);
+    let refills = 0;
+    for (const y of result.years) {
+      if (y.portfolioReturn > 0.07) {
+        // Auffüllung erlaubt – die Reserve liegt danach auf dem Zielwert.
+        expect(y.refillAmount, `Jahr ${y.year}`).toBeGreaterThan(0);
+        refills++;
+      } else {
+        expect(y.refillAmount, `Jahr ${y.year}`).toBe(0);
+      }
+      // Die Reserve wächst nur durch die Auffüllung selbst.
+      expect(y.reserveEnd).toBeCloseTo(y.reserveBeforeRefill + y.refillAmount, 8);
+    }
+    expect(refills).toBeGreaterThan(0);
+  });
+
+  it('M15: eine sehr hohe Schwelle wirkt wie „nie auffüllen“', () => {
+    const never = runSimulation(refInput(), SCENARIO_BAD_YEARS, getStrategy('S1'));
+    const highThreshold = buildStrategies(0.8, {
+      reserveYears: 2,
+      refillThreshold: 1,
+    }).find((s) => s.id === 'S4')!;
+    const result = runSimulation(refInput(), SCENARIO_BAD_YEARS, highThreshold);
+    expect(result.years.every((y) => y.refillAmount === 0)).toBe(true);
+    expect(result.endCapital).toBeCloseTo(never.endCapital, 6);
+  });
+
+  it('M16: die Zielreserve steuert, bis zu welcher Höhe aufgefüllt wird', () => {
+    const withTarget = (target: number) => {
+      const s4 = buildStrategies(0.8, { reserveYears: 1, targetReserveYears: target }).find(
+        (s) => s.id === 'S4',
+      )!;
+      return runSimulation(refInput(), SCENARIO_BAD_YEARS, s4);
+    };
+
+    const target3 = withTarget(3);
+    const refilled = target3.years.filter((y) => y.refillAmount > 0);
+    expect(refilled.length).toBeGreaterThan(0);
+    for (const y of refilled) {
+      expect(y.reserveTarget).toBeCloseTo(3 * REFERENCE_CASE.annualNeed, 6);
+      expect(y.reserveEnd).toBeCloseTo(3 * REFERENCE_CASE.annualNeed, 6);
+    }
+
+    // Eine höhere Zielreserve verschiebt insgesamt mehr Kapital in die Reserve.
+    const sum = (r: ReturnType<typeof withTarget>) =>
+      r.years.reduce((acc, y) => acc + y.refillAmount, 0);
+    expect(sum(target3)).toBeGreaterThan(sum(withTarget(1)));
   });
 });

@@ -1,32 +1,26 @@
-import type { RefillRule, Strategy, StrategyParams } from '../engine/types';
-import { REFILL_RULE_LABELS } from '../engine/strategies';
+import type { Strategy } from '../engine/types';
 import { strategyColor } from './strategyVisuals';
 
 interface StrategyControlsProps {
   strategies: Strategy[];
   visibleIds: Set<string>;
   onToggle: (id: string) => void;
-  userParams: Partial<StrategyParams>;
-  onUserParamsChange: (patch: Partial<StrategyParams>) => void;
 }
 
-export function StrategyControls({
-  strategies,
-  visibleIds,
-  onToggle,
-  userParams,
-  onUserParamsChange,
-}: StrategyControlsProps) {
-  const userStrategy = strategies.find((s) => s.id === 'S4');
-  const refillRule = userParams.refillRule ?? userStrategy?.params.refillRule ?? 'aboveStart';
-
+/**
+ * The four strategies with their visibility toggles.
+ *
+ * All strategies start from the same reserve height (chosen in the
+ * "Ausgangslage"); they differ in how they *use* the reserve. The
+ * user-defined strategy S4 is configured in the compact card next to this list.
+ */
+export function StrategyControls({ strategies, visibleIds, onToggle }: StrategyControlsProps) {
   return (
     <div className="strategies-panel">
-      <h3 className="sub-heading">Strategien</h3>
       <p className="hint">
-        Alle Strategien nutzen <strong>dieselbe Reservehöhe</strong> aus der „Ausgangslage“ – sie
-        unterscheiden sich darin, <strong>wie sie die Reserve verwenden</strong>. S4 ist frei
-        einstellbar.
+        Alle Strategien starten mit <strong>derselben Reservehöhe</strong> aus der „Ausgangslage“ – sie
+        unterscheiden sich darin, <strong>wie sie die Reserve verwenden</strong>. S4 setzt Regel,
+        Schwelle und Zielreserve frei.
       </p>
       <ul className="strategy-list" role="list">
         {strategies.map((s) => (
@@ -44,24 +38,6 @@ export function StrategyControls({
               </span>
             </label>
             <p className="strategy-desc">{s.description}</p>
-
-            {s.id === 'S4' && visibleIds.has(s.id) && (
-              <div className="user-params">
-                <label className="field">
-                  <span>Auffüllregel</span>
-                  <select
-                    value={refillRule}
-                    onChange={(e) => onUserParamsChange({ refillRule: e.target.value as RefillRule })}
-                  >
-                    {Object.entries(REFILL_RULE_LABELS).map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-            )}
           </li>
         ))}
       </ul>

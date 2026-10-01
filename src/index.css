@@ -116,16 +116,13 @@ body {
   }
 }
 
+/* --------------------------------------------------------- sub navigation */
 .subnav {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 2px;
-  overflow-x: auto;
   padding: 2px 2px 8px;
-  scrollbar-width: none;
-}
-
-.subnav::-webkit-scrollbar {
-  display: none;
 }
 
 .subnav a {
@@ -141,6 +138,23 @@ body {
 
 .subnav a:hover {
   background: var(--surface);
+  color: var(--brand);
+}
+
+/* "Ergebnisse" always sits directly after the market scenario and is the
+   primary result area – set apart from the parameter sections. */
+.subnav a.nav-result {
+  margin-left: 6px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--brand);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 800;
+}
+
+.subnav a.nav-result:hover {
+  border-color: var(--brand);
   color: var(--brand);
 }
 
@@ -1148,6 +1162,21 @@ summary:focus-visible {
   background: #fee2e2;
 }
 
+/* A year in which the reserve was topped up from the portfolio. */
+.row-refill {
+  background: #ecfdf5;
+}
+
+@media (prefers-color-scheme: dark) {
+  .row-depleted {
+    background: #3b1418;
+  }
+
+  .row-refill {
+    background: #10291d;
+  }
+}
+
 .status {
   font-size: 0.75rem;
   font-weight: 700;
@@ -1225,10 +1254,196 @@ summary:focus-visible {
   color: var(--muted);
 }
 
-.user-params {
-  margin-top: 12px;
-  padding-top: 12px;
+/* -------------------------------------------------- S4 (user) strategy card */
+.user-card {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-left: 4px solid #16a34a;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+
+.user-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+.user-card-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.user-card-rule {
+  margin-left: auto;
+  font-size: 0.8rem;
+}
+
+.user-card-rows {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.user-card-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 10px;
+  font-size: 0.88rem;
+}
+
+.user-card-label {
+  color: var(--muted);
+}
+
+.user-card-value {
+  font-weight: 700;
+}
+
+.user-card-note {
+  margin-left: 8px;
+  font-weight: 400;
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+.user-card-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.user-card-input input {
+  width: 5.5rem;
+  padding: 4px 8px;
+  font: inherit;
+  font-weight: 700;
+  text-align: right;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.user-card-unit {
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.user-card-summary {
+  margin: 10px 0 0;
+  padding-top: 10px;
   border-top: 1px dashed var(--line);
+  font-size: 0.84rem;
+  color: var(--muted);
+}
+
+.user-card-summary strong {
+  color: var(--text);
+}
+
+/* --------------------------------------------------- compact live result bar */
+.live-bar {
+  position: fixed;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  z-index: 40;
+  display: none;
+  align-items: center;
+  gap: 12px;
+  max-width: min(1040px, calc(100% - 20px));
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.22);
+}
+
+.live-bar.visible {
+  display: flex;
+}
+
+.live-bar-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #15803d;
+  white-space: nowrap;
+}
+
+.live-bar-list {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.live-bar-list::-webkit-scrollbar {
+  display: none;
+}
+
+.live-bar-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  font-size: 0.84rem;
+}
+
+.live-bar-id {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 20px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.live-bar-value {
+  font-weight: 800;
+}
+
+.live-bar-delta {
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.live-bar-delta.neg { color: #b91c1c; }
+.live-bar-delta.pos { color: #15803d; }
+
+.live-bar-btn {
+  flex: 0 0 auto;
+  padding: 5px 12px;
+  font-size: 0.78rem;
+}
+
+@media (max-width: 560px) {
+  .live-bar {
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    transform: none;
+    max-width: none;
+    border-radius: var(--radius);
+  }
+
+  .live-bar-title {
+    display: none;
+  }
 }
 
 /* --------------------------------------------------------- composition */
@@ -1568,6 +1783,12 @@ summary:focus-visible {
 }
 
 .cmp-block.active {
+  display: block;
+}
+
+/* The sensitivity section has its own card: it is never toggled by the mobile
+   view switch of the comparison section and therefore always visible. */
+.sensitivity-block {
   display: block;
 }
 

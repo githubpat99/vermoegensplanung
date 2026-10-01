@@ -81,6 +81,11 @@ export function runSimulation(
     const bondAfterReturn = bondStart + bondReturnChf;
     reserve = reserveStart + reserveReturnChf;
 
+    // Return of the invested portfolio (equity + bonds, weighted). This is the
+    // figure the S4 threshold rule reacts to; it is independent of the reserve.
+    const investedStart = equityStart + bondStart;
+    const portfolioReturn = investedStart > 0 ? (equityReturnChf + bondReturnChf) / investedStart : 0;
+
     // (3) capital need (V1: inflation = 0)
     const capitalNeed = annualNeed * Math.pow(1 + input.inflation, i);
 
@@ -95,6 +100,7 @@ export function runSimulation(
       bondAfterReturn,
       equityReturn,
       bondReturn,
+      portfolioReturn,
       equityReturnHistory: scenario.equityReturns.slice(0, i + 1),
     };
     const decision = strategy.decide(ctx, params);
@@ -114,13 +120,16 @@ export function runSimulation(
     if (unmetNeed > 1e-9) depleted = true;
 
     // (5) optionally replenish the reserve from the invested portfolio
+    const reserveBeforeRefill = reserve;
+    let refillAmount = 0;
     if (decision.refill && reserve < decision.reserveTarget) {
       const want = Math.min(decision.reserveTarget - reserve, eq + bd);
       if (want > 0) {
         const sell = withdrawProportional(eq, bd, want);
         eq -= sell.fromEquity;
         bd -= sell.fromBond;
-        reserve += want - sell.unmet;
+        refillAmount = want - sell.unmet;
+        reserve += refillAmount;
       }
     }
 
@@ -149,11 +158,15 @@ export function runSimulation(
       reserveBonds,
       reserveReturn,
       reserveReturnChf,
+      portfolioReturn,
       capitalNeed,
       withdrawalFromReserve: fromReserve,
       withdrawalFromEquity: withdrawal.fromEquity,
       withdrawalFromBond: withdrawal.fromBond,
       unmetNeed,
+      reserveBeforeRefill,
+      refillAmount,
+      reserveTarget: decision.reserveTarget,
       rebalanced: decision.rebalance,
       equityWeightAfterRebalance: investedEnd > 0 ? eq / investedEnd : 0,
       equityEnd: eq,
