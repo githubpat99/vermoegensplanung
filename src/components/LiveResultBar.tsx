@@ -6,24 +6,24 @@ import { byStrategyOrder, strategyCard } from './strategyVisuals';
 interface LiveResultBarProps {
   results: StrategyResult[];
   visibleIds: Set<string>;
+  /** Öffnet die Detailanalyse (dort stehen die vollständigen Ergebnisse). */
+  onOpenDetails: () => void;
 }
 
 /**
- * Compact live result bar.
+ * Kompakte Live-Ergebnisleiste im Labor.
  *
- * Every parameter change recalculates all strategies immediately – this bar
- * makes that visible while the user edits parameters: as soon as the full
- * "Ergebnisse" section is outside the viewport, the end capital of every
- * visible strategy is shown in a compact strip that can jump back to the
- * full results. The full section stays the primary result area.
+ * Jede Parameteränderung rechnet alle Strategien sofort neu – die Leiste zeigt
+ * das Endvermögen der sichtbaren Strategien, solange der Vergleichsbereich
+ * ausserhalb des sichtbaren Bereichs liegt, und führt per Klick in die Details.
  */
-export function LiveResultBar({ results, visibleIds }: LiveResultBarProps) {
+export function LiveResultBar({ results, visibleIds, onOpenDetails }: LiveResultBarProps) {
   // The results live below the fold on load, so the bar starts visible and is
-  // switched off as soon as the section itself is on screen.
+  // switched off as soon as the comparison section itself is on screen.
   const [show, setShow] = useState(true);
 
   useEffect(() => {
-    const target = document.getElementById('ergebnisse');
+    const target = document.getElementById('vergleich');
     if (!target || typeof IntersectionObserver === 'undefined') return;
     const observer = new IntersectionObserver(
       (entries) => {
@@ -37,12 +37,6 @@ export function LiveResultBar({ results, visibleIds }: LiveResultBarProps) {
 
   const shown = byStrategyOrder(results.filter((r) => visibleIds.has(r.strategyId)));
   if (shown.length === 0) return null;
-
-  const goToResults = () => {
-    const el = document.getElementById('ergebnisse');
-    if (el instanceof HTMLDetailsElement) el.open = true;
-    el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
 
   return (
     <div className={`live-bar${show ? ' visible' : ''}`} aria-label="Live-Ergebnisse">
@@ -66,8 +60,8 @@ export function LiveResultBar({ results, visibleIds }: LiveResultBarProps) {
           );
         })}
       </ul>
-      <button type="button" className="btn-ghost live-bar-btn" onClick={goToResults}>
-        Ergebnisse
+      <button type="button" className="btn-ghost live-bar-btn" onClick={onOpenDetails}>
+        Details
       </button>
     </div>
   );

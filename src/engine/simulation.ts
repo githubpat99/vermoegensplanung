@@ -50,6 +50,16 @@ export function runSimulation(
   let equity = start.equity;
   let bond = start.bond;
 
+  /**
+   * High-water mark of the *invested* portfolio (equity + bonds).
+   *
+   * Observation point: after the year's returns, **before** the withdrawal and
+   * **before** the refill. The mark is only ever raised, so neither spending nor
+   * a transfer into the reserve can lower it – that is exactly what prevents the
+   * same gain from being skimmed twice in the following year.
+   */
+  let highWaterMark = start.equity + start.bond;
+
   const years: YearResult[] = [];
   let depleted = false;
 
@@ -83,9 +93,22 @@ export function runSimulation(
 
     // Return of the invested portfolio (equity + bonds, weighted). This is the
     // figure the S4 threshold rule reacts to; it is independent of the reserve.
+    //
+    // Computed from the *given* returns with the start weights – NOT as
+    // "gain / start value": the latter round-trips through two floating point
+    // operations and can land just below/above an exact threshold value, which
+    // would make the threshold decision depend on the account balance.
     const investedStart = equityStart + bondStart;
-    const portfolioReturn = investedStart > 0 ? (equityReturnChf + bondReturnChf) / investedStart : 0;
+    const equityShare = investedStart > 0 ? equityStart / investedStart : 0;
+    const portfolioReturn =
+      investedStart > 0
+        ? equityShare * equityReturn + (1 - equityShare) * bondReturn
+        : 0;
 
+    // High-water-mark observation for the year (before withdrawal/refill).
+    const portfolioAfterReturn = equityAfterReturn + bondAfterReturn;
+    const highWaterMarkBefore = highWaterMark;
+    const newGain = Math.max(0, portfolioAfterReturn - highWaterMarkBefore);
     // (3) capital need (V1: inflation = 0)
     const capitalNeed = annualNeed * Math.pow(1 + input.inflation, i);
 
@@ -101,6 +124,9 @@ export function runSimulation(
       equityReturn,
       bondReturn,
       portfolioReturn,
+      portfolioAfterReturn,
+      portfolioHighWaterMark: highWaterMarkBefore,
+      portfolioNewGain: newGain,
       equityReturnHistory: scenario.equityReturns.slice(0, i + 1),
     };
     const decision = strategy.decide(ctx, params);
@@ -119,11 +145,21 @@ export function runSimulation(
     const unmetNeed = withdrawal.unmet;
     if (unmetNeed > 1e-9) depleted = true;
 
-    // (5) optionally replenish the reserve from the invested portfolio
+    // (5) optionally replenish the reserve from the invested portfolio.
+    //
+    // The refill is an internal transfer only: the invested portfolio shrinks by
+    // exactly the amount the reserve grows, so the total capital is unchanged.
+    //
+    // `refillBase` is what the quota applies to (the missing reserve for the
+    // top-up rules, the new gain above the high-water mark for the high-water
+    // rule); the transfer is capped by the missing reserve and by what the
+    // invested portfolio actually holds.
     const reserveBeforeRefill = reserve;
+    const reserveGap = Math.max(0, decision.reserveTarget - reserve);
+    const refillBase = Math.max(0, decision.refillBase ?? reserveGap);
     let refillAmount = 0;
-    if (decision.refill && reserve < decision.reserveTarget) {
-      const want = Math.min(decision.reserveTarget - reserve, eq + bd);
+    if (decision.refill && decision.refillQuota > 0 && refillBase > 0) {
+      const want = Math.min(refillBase * decision.refillQuota, reserveGap, eq + bd);
       if (want > 0) {
         const sell = withdrawProportional(eq, bd, want);
         eq -= sell.fromEquity;
@@ -132,6 +168,13 @@ export function runSimulation(
         reserve += refillAmount;
       }
     }
+    /** Share of the base that was actually moved into the reserve. */
+    const appliedQuota = refillBase > 0 ? Math.min(1, refillAmount / refillBase) : 0;
+
+    // The high-water mark is raised to this year's observation – based on the
+    // value *before* the refill, so a transfer never lowers the mark.
+    const highWaterMarkAfter = Math.max(highWaterMarkBefore, portfolioAfterReturn);
+    highWaterMark = highWaterMarkAfter;
 
     // (6) rebalance the invested portfolio
     if (decision.rebalance) {
@@ -167,6 +210,12 @@ export function runSimulation(
       reserveBeforeRefill,
       refillAmount,
       reserveTarget: decision.reserveTarget,
+      refillBase,
+      refillQuota: appliedQuota,
+      portfolioAfterReturn,
+      highWaterMarkBefore,
+      highWaterMarkAfter,
+      newGain,
       rebalanced: decision.rebalance,
       equityWeightAfterRebalance: investedEnd > 0 ? eq / investedEnd : 0,
       equityEnd: eq,

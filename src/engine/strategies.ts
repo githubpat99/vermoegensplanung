@@ -1,6 +1,12 @@
-import { DEFAULT_REFILL_THRESHOLD } from './types';
+import {
+  DEFAULT_GAIN_SKIM_QUOTA,
+  DEFAULT_REFILL_THRESHOLD,
+  DEFAULT_REFILL_TIERS,
+  REFILL_THRESHOLD_EPSILON,
+} from './types';
 import type {
   RefillRule,
+  RefillTier,
   Strategy,
   StrategyContext,
   StrategyDecision,
@@ -59,6 +65,43 @@ function dynamicEquityWeight(history: number[], baseWeight: number): number {
   return w;
 }
 
+/**
+ * Share of the missing reserve that the staged rule ({@link RefillRule}
+ * `portfolioTiered`) refills for a given portfolio return.
+ *
+ * The stages are inclusive on the upper bound ("≤ 5 %" → 0 %, "> 5 % up to
+ * 10 %" → 25 %, …). The comparison carries
+ * {@link REFILL_THRESHOLD_EPSILON} so a return that exactly hits a stage
+ * boundary lands in the *lower* stage deterministically, independent of the
+ * account balance (see the audit group N for the floating-point background).
+ */
+export function refillQuotaForReturn(
+  portfolioReturn: number,
+  tiers: readonly RefillTier[] = DEFAULT_REFILL_TIERS,
+): number {
+  for (const tier of tiers) {
+    if (portfolioReturn <= tier.upTo + REFILL_THRESHOLD_EPSILON) return tier.quota;
+  }
+  return 1;
+}
+
+/** Percent label of a stage boundary, e.g. 0.05 → "5 %", 0.075 → "7,5 %". */
+export function formatTierPercent(fraction: number): string {
+  const percent = fraction * 100;
+  const text = Number.isInteger(percent) ? String(percent) : percent.toFixed(1).replace('.', ',');
+  return `${text} %`;
+}
+
+/** Human label of one stage, e.g. "5–10 %" / "bis 5 %" / "über 20 %". */
+export function refillTierLabel(index: number, tiers: readonly RefillTier[] = DEFAULT_REFILL_TIERS): string {
+  const tier = tiers[index];
+  if (!tier) return '';
+  const lower = index > 0 ? tiers[index - 1].upTo : null;
+  if (lower == null) return `bis ${formatTierPercent(tier.upTo)}`;
+  if (!Number.isFinite(tier.upTo)) return `über ${formatTierPercent(lower)}`;
+  return `${formatTierPercent(lower)}–${formatTierPercent(tier.upTo)}`;
+}
+
 function shouldRefill(params: StrategyParams, ctx: StrategyContext): boolean {
   switch (params.refillRule) {
     case 'always':
@@ -70,15 +113,46 @@ function shouldRefill(params: StrategyParams, ctx: StrategyContext): boolean {
       return total >= ctx.input.initialCapital;
     }
     case 'portfolioAboveThreshold':
-      return ctx.portfolioReturn > (params.refillThreshold ?? DEFAULT_REFILL_THRESHOLD);
+      // "≥" mit Toleranz: eine Portfoliorendite, die die Schwelle exakt trifft,
+      // zählt als erreicht – unabhängig von Gleitkomma-Rauschen.
+      return (
+        ctx.portfolioReturn >=
+        (params.refillThreshold ?? DEFAULT_REFILL_THRESHOLD) - REFILL_THRESHOLD_EPSILON
+      );
+    case 'portfolioTiered':
+      return refillQuotaForReturn(ctx.portfolioReturn) > 0;
+    case 'portfolioHighWater':
+      // Nur ein *echter* neuer Höchststandsgewinn löst aus; die Toleranz
+      // verhindert, dass Rundungsrauschen einen Scheingewinn erzeugt.
+      return ctx.portfolioNewGain > REFILL_THRESHOLD_EPSILON;
     case 'never':
       return false;
+  }
+}
+
+/** Share of the base to refill for the current rule. */
+function refillQuotaOf(params: StrategyParams, ctx: StrategyContext): number {
+  switch (params.refillRule) {
+    case 'portfolioTiered':
+      return refillQuotaForReturn(ctx.portfolioReturn);
+    case 'portfolioHighWater':
+      return params.gainSkimQuota ?? DEFAULT_GAIN_SKIM_QUOTA;
+    default:
+      return 1;
   }
 }
 
 /** Format a decimal threshold as a Swiss percentage, e.g. 0.07 → "7,0 %". */
 export function formatThreshold(threshold: number): string {
   return `${(threshold * 100).toFixed(1).replace('.', ',')} %`;
+}
+
+/** CHF base the quota applies to (omitted = the missing reserve). */
+function refillBaseOf(params: StrategyParams, ctx: StrategyContext): number | undefined {
+  // Die High-Water-Mark-Regel schöpft aus dem neuen Gewinn oberhalb des
+  // bisherigen Portfolio-Höchststands – nicht aus der fehlenden Reserve.
+  if (params.refillRule === 'portfolioHighWater') return ctx.portfolioNewGain;
+  return undefined;
 }
 
 /** Short explanation of the reserve-usage rule for the yearly detail table. */
@@ -88,17 +162,36 @@ const REFILL_RATIONALE: Record<RefillRule, string> = {
   equityPositive: 'Reserve nach positivem Aktienjahr aufgefüllt',
   aboveStart: 'Reserve aufgefüllt (Vermögen über Startwert)',
   portfolioAboveThreshold: 'Reserve nicht aufgefüllt (Schwelle nicht erreicht)',
+  portfolioTiered: 'Reserve nicht aufgefüllt (Stufe unter 5 %)',
+  portfolioHighWater: 'Reserve nicht aufgefüllt (unter dem bisherigen Portfolio-Höchststand)',
 };
 
-/** Rationale of the current rule, including the configured threshold. */
-function refillRationale(params: StrategyParams, refillAllowed: boolean): string {
-  if (params.refillRule !== 'portfolioAboveThreshold') {
-    return REFILL_RATIONALE[params.refillRule];
+/** Rationale of the current rule, including threshold / applied stage. */
+function refillRationale(
+  params: StrategyParams,
+  ctx: StrategyContext,
+  refillAllowed: boolean,
+  quota: number,
+): string {
+  if (params.refillRule === 'portfolioAboveThreshold') {
+    const threshold = formatThreshold(params.refillThreshold ?? DEFAULT_REFILL_THRESHOLD);
+    return refillAllowed
+      ? `Reserve aufgefüllt (Portfoliorendite ab ${threshold})`
+      : `Reserve nicht aufgefüllt (Portfoliorendite unter ${threshold})`;
   }
-  const threshold = formatThreshold(params.refillThreshold ?? DEFAULT_REFILL_THRESHOLD);
-  return refillAllowed
-    ? `Reserve aufgefüllt (Portfoliorendite über ${threshold})`
-    : `Reserve nicht aufgefüllt (Portfoliorendite höchstens ${threshold})`;
+  if (params.refillRule === 'portfolioTiered') {
+    const percent = formatTierPercent(quota);
+    return refillAllowed
+      ? `Reserve gestaffelt aufgefüllt (${percent} der Lücke, Portfoliorendite ${formatTierPercent(ctx.portfolioReturn)})`
+      : `Reserve nicht aufgefüllt (Portfoliorendite ${formatTierPercent(ctx.portfolioReturn)} unter 5 %)`;
+  }
+  if (params.refillRule === 'portfolioHighWater') {
+    const percent = formatTierPercent(params.gainSkimQuota ?? DEFAULT_GAIN_SKIM_QUOTA);
+    return refillAllowed
+      ? `Reserve aufgefüllt (${percent} des neuen Höchststandsgewinns von CHF ${Math.round(ctx.portfolioNewGain)})`
+      : 'Reserve nicht aufgefüllt (Portfolio unter dem bisherigen Höchststand)';
+  }
+  return REFILL_RATIONALE[params.refillRule];
 }
 
 /** Generic decision function driven by {@link StrategyParams}. */
@@ -121,6 +214,7 @@ function decideWithParams(ctx: StrategyContext, params: StrategyParams): Strateg
   }
 
   const refill = shouldRefill(params, ctx);
+  const refillQuota = refillQuotaOf(params, ctx);
   const targetYears = params.targetReserveYears ?? reserveYears;
   if (!hasAbsolute && params.targetReserveYears != null && params.targetReserveYears !== params.reserveYears) {
     parts.push(`Zielreserve ${String(targetYears).replace('.', ',')} Jahresbedarf(e)`);
@@ -132,9 +226,11 @@ function decideWithParams(ctx: StrategyContext, params: StrategyParams): Strateg
   return {
     reserveTarget,
     refill,
+    refillQuota,
+    refillBase: refillBaseOf(params, ctx),
     equityWeight,
     rebalance: params.rebalance,
-    rationale: [refillRationale(params, refill), ...parts].join(' · '),
+    rationale: [refillRationale(params, ctx, refill, refillQuota), ...parts].join(' · '),
   };
 }
 
@@ -168,9 +264,9 @@ function strategy(
 export const STRATEGIES: Strategy[] = [
   strategy(
     'S1',
-    'Nur verbrauchen',
-    'Nur verbrauchen',
-    'Die Liquiditätsreserve wird nur verbraucht und nie wieder aufgefüllt. Sobald sie aufgebraucht ist, wird der Bedarf vollständig aus dem investierten Portfolio gedeckt.',
+    'Reserve verbrauchen',
+    'Reserve verbrauchen',
+    'Die anfängliche Reserve wird für Entnahmen verwendet und danach nicht wieder aufgebaut.',
     {
       reserveYears: 2,
       reserveAbsolute: null,
@@ -213,9 +309,9 @@ export const STRATEGIES: Strategy[] = [
   ),
   strategy(
     'S4',
-    'Benutzerdefiniert',
-    'Individuell',
-    'Frei konfigierbare Auffüllregel: Standard ist „erst auffüllen, wenn die Portfoliorendite des Jahres über der Schwelle lag“ (7 %). Die Reservehöhe kommt aus der „Ausgangslage“, die Zielreserve ist frei wählbar.',
+    'Neue Höchststände',
+    'Neue Höchststände',
+    'Nur Vermögenszuwächse oberhalb des bisherigen Portfolio-Höchststands werden teilweise verwendet, um die Reserve wieder aufzubauen.',
     {
       reserveYears: 2,
       reserveAbsolute: null,
@@ -248,7 +344,9 @@ export const REFILL_RULE_LABELS: Record<RefillRule, string> = {
   always: 'Jährlich auffüllen',
   equityPositive: 'Nach guten Jahren auffüllen',
   aboveStart: 'Nur über Startwert auffüllen',
-  portfolioAboveThreshold: 'Bei Portfoliorendite über Schwelle auffüllen',
+  portfolioAboveThreshold: 'Bei Portfoliorendite ab Schwelle auffüllen',
+  portfolioTiered: 'Gestaffelt nach Rendite auffüllen',
+  portfolioHighWater: 'Bei neuem Höchststand Gewinne sichern',
 };
 
 /**
@@ -287,11 +385,15 @@ export function buildStrategies(
       params.refillRule === 'portfolioAboveThreshold'
         ? ` (Schwelle ${formatThreshold(params.refillThreshold ?? DEFAULT_REFILL_THRESHOLD)})`
         : '';
+    const tierText =
+      params.refillRule === 'portfolioTiered'
+        ? ` (Staffel: ${DEFAULT_REFILL_TIERS.map((tier, i) => `${refillTierLabel(i)} → ${formatTierPercent(tier.quota)}`).join(', ')})`
+        : '';
 
     return {
       ...s,
       description:
-        `Frei konfigurierbare Strategie ${reserveText}, aktuell „${REFILL_RULE_LABELS[params.refillRule]}“${thresholdText}.` +
+        `Frei konfigurierbare Strategie ${reserveText}, aktuell „${REFILL_RULE_LABELS[params.refillRule]}“${thresholdText}${tierText}.` +
         `${targetText} Reservehöhe und Aktienquote kommen aus der „Ausgangslage“.`,
       params,
     };

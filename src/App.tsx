@@ -1,37 +1,22 @@
 import { useEffect, useMemo, useState } from 'react';
 import { buildStrategies, withParams } from './engine/strategies';
 import { normalizeEquityWeight, runSimulation } from './engine/simulation';
+import { DEFAULT_GAIN_SKIM_QUOTA } from './engine/types';
 import type { MarketScenario, SimulationInput, StrategyParams } from './engine/types';
 import { ALL_SCENARIOS, REFERENCE_CASE, SCENARIO_BAD_YEARS } from './data/scenarios';
 import { withBondSequence } from './data/syntheticScenarios';
 import { HISTORICAL_BOND_SEQUENCES } from './data/historicalScenarios';
 import { AppHeader } from './components/AppHeader';
 import type { AppMode } from './components/ModeTabs';
-import { SectionPanel, StaticPanel } from './components/SectionPanel';
-import { InputPanel, type ReserveState } from './components/InputPanel';
-import { MoreSettings } from './components/MoreSettings';
-import { ScenarioSelector } from './components/ScenarioSelector';
-import { StrategyControls } from './components/StrategyControls';
-import { StrategyTiles } from './components/StrategyTiles';
-import { UserStrategyCard } from './components/UserStrategyCard';
+import { SectionPanel } from './components/SectionPanel';
+import type { ReserveState } from './components/ReserveInput';
+import { StartPanel } from './components/StartPanel';
+import { UserStrategyCard, S4_DEFAULTS, formatSkimPercent } from './components/UserStrategyCard';
 import { LiveResultBar } from './components/LiveResultBar';
-import { ComparisonChart } from './components/ComparisonChart';
-import { WealthChart } from './components/WealthChart';
-import { CompositionChart } from './components/CompositionChart';
-import { ScenarioComparisonChart } from './components/ScenarioComparisonChart';
-import { YearDetailTable } from './components/YearDetailTable';
-import { SourcesPanel } from './components/SourcesPanel';
-import { StrategyPicker } from './components/StrategyPicker';
-import { ComparisonView } from './components/ComparisonView';
-import {
-  IconBarChart,
-  IconBook,
-  IconGear,
-  IconLayers,
-  IconTable,
-  IconTrend,
-  IconUser,
-} from './components/icons';
+import { LaborComparison } from './components/LaborComparison';
+import { DetailsView } from './components/DetailsView';
+import { SettingsView } from './components/SettingsView';
+import { IconLayers, IconUser } from './components/icons';
 import { reserveLabel } from './components/strategyVisuals';
 
 const ALL_IDS = ['S1', 'S2', 'S3', 'S4'];
@@ -46,22 +31,37 @@ function resolveScenario(base: MarketScenario, bondSequenceId: string): MarketSc
   return base.type === 'synthetic' ? withBondSequence(base, bondSequenceId) : base;
 }
 
+/**
+ * Vermögenslabor.
+ *
+ * Drei Bereiche mit **einem gemeinsamen Zustand**: LABOR (ausprobieren und
+ * vergleichen), DETAILS (eine Kombination Jahr für Jahr verstehen) und
+ * EINSTELLUNGEN (Grundlagen und Methodik). Jede Änderung wirkt sofort in allen
+ * Bereichen – es gibt keine getrennten Konfigurationen.
+ */
 export default function App(
   {
-    initialMode = 'simulation',
+    initialMode = 'labor',
     initialReserveYears = 2,
-  }: { initialMode?: AppMode; initialReserveYears?: number } = {},
+    initialStrategyId = 'S2',
+    initialScenarioId = SCENARIO_BAD_YEARS.id,
+    initialUserParams = S4_DEFAULTS,
+  }: {
+    initialMode?: AppMode;
+    initialReserveYears?: number;
+    initialStrategyId?: string;
+    initialScenarioId?: string;
+    initialUserParams?: Partial<StrategyParams>;
+  } = {},
 ) {
   const [mode, setMode] = useState<AppMode>(initialMode);
   const [input, setInput] = useState<SimulationInput>({ ...REFERENCE_CASE });
   const [reserve, setReserve] = useState<ReserveState>({ mode: 'years', years: initialReserveYears });
-  const [scenarioId, setScenarioId] = useState<string>(SCENARIO_BAD_YEARS.id);
+  const [scenarioId, setScenarioId] = useState<string>(initialScenarioId);
   const [bondSequenceId, setBondSequenceId] = useState<string>(HISTORICAL_BOND_SEQUENCES[0].id);
   const [visibleIds, setVisibleIds] = useState<Set<string>>(new Set(ALL_IDS));
-  const [detailStrategyId, setDetailStrategyId] = useState<string>('S2');
-  const [userParams, setUserParams] = useState<Partial<StrategyParams>>({});
-  /** Counter: > 0 means "jump to the result area" was requested. */
-  const [showResults, setShowResults] = useState(0);
+  const [detailStrategyId, setDetailStrategyId] = useState<string>(initialStrategyId);
+  const [userParams, setUserParams] = useState<Partial<StrategyParams>>(initialUserParams);
 
   // Effective reserve: derived from the chosen mode.
   const reserveChf =
@@ -96,9 +96,10 @@ export default function App(
     [strategies],
   );
 
-  // Refill target of the user-defined strategy S4 (defaults to the reserve
+  // Refill target of the experimentation strategy S4 (defaults to the reserve
   // height from the "Ausgangslage").
   const targetReserveYears = userParams.targetReserveYears ?? reserveYears;
+  const gainSkimQuota = userParams.gainSkimQuota ?? DEFAULT_GAIN_SKIM_QUOTA;
 
   // All scenarios with the currently selected bond overlay applied.
   const allScenarios = useMemo(
@@ -131,9 +132,13 @@ export default function App(
     });
   }, [strategies, detailStrategyId, effectiveInput, allScenarios]);
 
-  const detailResult = results.find((r) => r.strategyId === detailStrategyId) ?? results[0] ?? null;
-
   const updateInput = (patch: Partial<SimulationInput>) => setInput((prev) => ({ ...prev, ...patch }));
+
+  // Beim Wechsel des Bereichs nach oben – die Details beginnen mit den Kennzahlen.
+  useEffect(() => {
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, [mode]);
 
   const toggleVisibility = (id: string) => {
     setVisibleIds((prev) => {
@@ -148,101 +153,96 @@ export default function App(
   const resetReference = () => {
     setInput({ ...REFERENCE_CASE });
     setReserve({ mode: 'years', years: 2 });
-    setUserParams({});
+    setUserParams({ ...S4_DEFAULTS });
   };
 
-  /** Copy a heatmap combination into the simulation view. */
-  const applyCombination = (equityAllocation: number, reserveYears: number) => {
+  /** Aus dem Labor in die Detailanalyse wechseln – derselbe Zustand. */
+  const openDetails = (opts: { scenarioId?: string; strategyId?: string } = {}) => {
+    if (opts.scenarioId) setScenarioId(opts.scenarioId);
+    if (opts.strategyId) setDetailStrategyId(opts.strategyId);
+    setMode('details');
+  };
+
+  /**
+   * Übernimmt eine Kombination aus dem Strategieraum in die gemeinsame
+   * Ausgangslage: Aktienquote (Zeile) und Startreserve (Spalte).
+   *
+   * Der Strategieraum wählt bewusst **keine** Strategie und **kein**
+   * Marktszenario und wechselt deshalb auch nicht in die Details – er
+   * beantwortet nur die Frage „Welche Ausgangslage möchte ich untersuchen?“.
+   * Der Bereich bleibt im Labor, alle Vergleiche rechnen sofort neu.
+   */
+  const applyCombination = (equityAllocation: number, nextReserveYears: number) => {
     setInput((prev) => ({
       ...prev,
       equityAllocation,
       bondAllocation: 1 - equityAllocation,
     }));
-    setReserve({ mode: 'years', years: reserveYears });
-    setMode('simulation');
-    // Jump straight to the result: expand "Ergebnisse" and scroll to it once the
-    // simulation view has rendered.
-    setShowResults((n) => n + 1);
-  };
-
-  useEffect(() => {
-    if (mode !== 'simulation' || showResults === 0) return;
-    const el = document.getElementById('ergebnisse');
-    if (el instanceof HTMLDetailsElement) el.open = true;
-    el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, [mode, showResults]);
-
-  /**
-   * Open the simulation result for a concrete combination picked in the
-   * comparison view (matrix cell, key figure or heatmap cell).
-   */
-  const openInSimulation = (opts: { scenarioId?: string; strategyId?: string } = {}) => {
-    if (opts.scenarioId) setScenarioId(opts.scenarioId);
-    if (opts.strategyId) setDetailStrategyId(opts.strategyId);
-    setMode('simulation');
-    setShowResults((n) => n + 1);
+    setReserve({ mode: 'years', years: nextReserveYears });
   };
 
   return (
     <div className="app">
       <AppHeader mode={mode} onModeChange={setMode} />
 
-      {mode === 'comparison' ? (
+      {mode === 'details' ? (
         <main>
-          <ComparisonView
+          <DetailsView
             input={effectiveInput}
-            onChange={updateInput}
-            reserve={reserve}
-            onReserveChange={setReserve}
-            strategies={strategies}
+            results={results}
             scenarios={allScenarios}
-            onApplyCombination={applyCombination}
-            onOpenInSimulation={openInSimulation}
+            scenario={scenario}
+            onSelectScenario={setScenarioId}
+            selectedStrategyId={detailStrategyId}
+            onSelectStrategy={setDetailStrategyId}
+            scenarioComparison={scenarioComparison}
+            reserveYears={reserveYears}
+            visibleIds={visibleIds}
+            refillRules={refillRules}
           />
         </main>
-      ) : mode === 'sources' ? (
+      ) : mode === 'einstellungen' ? (
         <main>
-          <StaticPanel
-            id="quellen"
-            title="Datengrundlage & Quellen"
-            subtitle="MSCI World, Bloomberg U.S. Aggregate, Methodik"
-            icon={<IconBook size={22} />}
-            tone="green"
-          >
-            <SourcesPanel scenarios={ALL_SCENARIOS} />
-          </StaticPanel>
+          <SettingsView
+            input={effectiveInput}
+            onChange={updateInput}
+            scenarios={allScenarios}
+            strategies={strategies}
+            visibleIds={visibleIds}
+            onToggleStrategy={toggleVisibility}
+            reserveYears={reserveYears}
+            bondSequenceId={bondSequenceId}
+            onBondSequenceChange={setBondSequenceId}
+          />
         </main>
       ) : (
         <main>
           <SectionPanel
             id="ausgangslage"
             title="Ausgangslage"
-            subtitle="Deine Basis für alle Strategien"
             icon={<IconUser size={22} />}
             tone="blue"
             meta={`${(equityWeight * 100).toFixed(0)}/${((1 - equityWeight) * 100).toFixed(0)} · Reserve ${reserveLabel(reserveYears)}`}
+            defaultOpen
           >
-            <InputPanel
+            <StartPanel
               input={effectiveInput}
               onChange={updateInput}
               reserve={reserve}
               onReserveChange={setReserve}
+              reserveChf={reserveChf}
               onReset={resetReference}
             />
           </SectionPanel>
 
           <SectionPanel
-            id="strategien"
-            title="Strategien"
-            subtitle="Vier Regeln für dieselbe Reserve – S4 ist frei einstellbar"
+            id="s4"
+            title="S4 · Neue Höchststände"
             icon={<IconLayers size={22} />}
             tone="green"
+            meta={`${formatSkimPercent(gainSkimQuota)} der neuen Gewinne → Reserve`}
+            defaultOpen
           >
-            <StrategyControls
-              strategies={strategies}
-              visibleIds={visibleIds}
-              onToggle={toggleVisibility}
-            />
             <UserStrategyCard
               reserveYears={reserveYears}
               targetYears={targetReserveYears}
@@ -251,102 +251,32 @@ export default function App(
             />
           </SectionPanel>
 
-          <SectionPanel
-            id="szenario"
-            title="Marktszenario"
-            subtitle="Gegen welche Marktphase willst du deinen Plan testen?"
-            icon={<IconTrend size={22} />}
-            tone="indigo"
-            meta={shortScenarioName(scenario.name)}
-          >
-            <ScenarioSelector
-              scenarios={ALL_SCENARIOS}
-              selectedId={scenarioId}
-              onSelect={setScenarioId}
-              bondSequenceId={bondSequenceId}
-              onBondSequenceChange={setBondSequenceId}
-            />
-          </SectionPanel>
+          <LaborComparison
+            input={effectiveInput}
+            reserveYears={reserveYears}
+            reserveChf={reserveChf}
+            strategies={strategies}
+            scenarios={allScenarios}
+            onOpenDetails={openDetails}
+            onApplyCombination={applyCombination}
+          />
 
-          <SectionPanel
-            id="ergebnisse"
-            title="Ergebnisse"
-            icon={<IconBarChart size={22} />}
-            tone="violet"
-            badge={
-              <span className="live-badge">
-                <span className="live-dot" /> Live aktualisiert
-              </span>
-            }
-          >
-            <StrategyTiles
-              results={results}
-              visibleIds={visibleIds}
-              reserveYears={reserveYears}
-              refillRules={refillRules}
-            />
-
-            <WealthChart results={results} visibleIds={visibleIds} />
-
-            <ComparisonChart results={results} visibleIds={visibleIds} />
-
-            <details className="sub-collapsible">
-              <summary>
-                <h3>Weitere Auswertungen</h3>
-                <span className="section-chevron-mini" />
-              </summary>
-              <div className="body-head">
-                <StrategyPicker results={results} value={detailStrategyId} onChange={setDetailStrategyId} />
-              </div>
-              <h4 className="sub-heading">Zusammensetzung über die Zeit</h4>
-              {detailResult && <CompositionChart result={detailResult} />}
-              <h4 className="sub-heading">Wirkung des Marktszenarios</h4>
-              <ScenarioComparisonChart
-                items={scenarioComparison}
-                strategyName={detailResult ? `${detailResult.strategyId} · ${detailResult.strategyName}` : ''}
-              />
-            </details>
-          </SectionPanel>
-
-          <SectionPanel
-            id="einstellungen"
-            title="Weitere Einstellungen"
-            subtitle="Startjahr, Dauer, eigene Szenarien, Bond-Annahmen"
-            icon={<IconGear size={22} />}
-            tone="slate"
-            defaultOpen={false}
-          >
-            <MoreSettings input={effectiveInput} onChange={updateInput} />
-          </SectionPanel>
-
-          <SectionPanel
-            id="jahresdetail"
-            title="Jahresdetails"
-            subtitle="Alle Werte pro Jahr im Detail"
-            icon={<IconTable size={22} />}
-            tone="amber"
-            defaultOpen={false}
-          >
-            <YearDetailTable
-              results={results}
-              selectedStrategyId={detailStrategyId}
-              onSelectStrategy={setDetailStrategyId}
-              scenario={scenario}
-            />
-          </SectionPanel>
-
-          <LiveResultBar results={results} visibleIds={visibleIds} />
+          <LiveResultBar
+            results={results}
+            visibleIds={visibleIds}
+            onOpenDetails={() => openDetails({ strategyId: detailStrategyId })}
+          />
         </main>
       )}
 
       <footer className="footer">
         <p>
-          Entnahme-Stresstest · V1 · Alle Beträge intern mit voller Genauigkeit berechnet, für die
+          Vermögenslabor V1 · Alle Beträge intern mit voller Genauigkeit berechnet, für die
           Darstellung auf ganze CHF gerundet. Inflation, Steuern und Kosten sind in V1 auf 0 % gesetzt.
         </p>
         <p className="disclaimer">
-          Dieses Werkzeug ist keine Anlageempfehlung. Es simuliert Strategien transparent und
-          vergleichbar und beantwortet die Frage „Was wäre mit meinem Vermögen passiert?“.
+          Das Vermögenslabor ist keine Anlageempfehlung. Historische Ergebnisse sind keine Garantie
+          für zukünftige Entwicklungen.
         </p>
       </footer>
     </div>

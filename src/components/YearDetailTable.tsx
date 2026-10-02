@@ -7,6 +7,10 @@ interface YearDetailTableProps {
   selectedStrategyId: string;
   onSelectStrategy: (id: string) => void;
   scenario: MarketScenario;
+  /** Focused year (highlighted); optional. */
+  selectedYear?: number | null;
+  /** Called when a year row is clicked. */
+  onSelectYear?: (year: number) => void;
 }
 
 /** A reserve amount expressed in annual needs, e.g. 116'000 / 72'500 → "1,6 J.". */
@@ -20,9 +24,14 @@ export function YearDetailTable({
   selectedStrategyId,
   onSelectStrategy,
   scenario,
+  selectedYear,
+  onSelectYear,
 }: YearDetailTableProps) {
   const result = results.find((r) => r.strategyId === selectedStrategyId) ?? results[0];
   if (!result) return null;
+
+  /** The high-water columns are only meaningful for that rule. */
+  const isHighWater = result.refillRule === 'portfolioHighWater';
 
   return (
     <div className="year-detail">
@@ -47,6 +56,15 @@ export function YearDetailTable({
         gewichtete Rendite des investierten Portfolios (Aktien + Bonds) – die Grösse, auf die die
         S4-Schwelle reagiert. „Reserve vor Auff.“ ist die Reserve nach der Entnahme, „Auffüllung“ der
         Betrag, der danach aus dem Portfolio in die Reserve fliesst.
+        {isHighWater && (
+          <>
+            {' '}
+            <strong>High-Water-Mark:</strong> Das investierte Portfolio wird jeweils{' '}
+            <em>nach</em> der Jahresrendite und <em>vor</em> Entnahme und Auffüllung gemessen; die
+            Marke wird nie gesenkt. Aufgefüllt wird nur aus dem Betrag, der das bisherige Hoch
+            übersteigt.
+          </>
+        )}
       </p>
 
       <div className="table-scroll">
@@ -72,9 +90,21 @@ export function YearDetailTable({
               <th scope="col" className="num">Entn. Reserve</th>
               <th scope="col" className="num">Entn. Aktien</th>
               <th scope="col" className="num">Entn. Bonds</th>
+              {isHighWater && (
+                <>
+                  <th scope="col" className="num">Höchststand bisher</th>
+                  <th scope="col" className="num">Portf. nach Rend.</th>
+                  <th scope="col" className="num">Neuer Gewinn</th>
+                </>
+              )}
               <th scope="col" className="num">Reserve vor Auff.</th>
+              <th scope="col" className="num">Fehl. Reserve</th>
+              <th scope="col" className="num">
+                {isHighWater ? 'Abschöpfquote' : 'Auffüllquote'}
+              </th>
               <th scope="col" className="num">Auffüllung</th>
               <th scope="col" className="num">Reserve neu</th>
+              {isHighWater && <th scope="col" className="num">Höchststand neu</th>}
               <th scope="col">Rebal.</th>
               <th scope="col" className="num">Aktien Ende</th>
               <th scope="col" className="num">Bonds Ende</th>
@@ -89,9 +119,24 @@ export function YearDetailTable({
                 className={[
                   y.depleted ? 'row-depleted' : '',
                   y.refillAmount > 0 ? 'row-refill' : '',
+                  selectedYear === y.year ? 'row-selected' : '',
+                  onSelectYear ? 'row-clickable' : '',
                 ]
                   .filter(Boolean)
                   .join(' ') || undefined}
+                aria-selected={selectedYear === y.year}
+                tabIndex={onSelectYear ? 0 : undefined}
+                onClick={onSelectYear ? () => onSelectYear(y.year) : undefined}
+                onKeyDown={
+                  onSelectYear
+                    ? (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          onSelectYear(y.year);
+                        }
+                      }
+                    : undefined
+                }
               >
                 <th scope="row">{y.year}</th>
                 <td>{y.referenceYear ?? '–'}</td>
@@ -111,9 +156,19 @@ export function YearDetailTable({
                 <td className="num">{formatChf(y.withdrawalFromReserve)}</td>
                 <td className="num">{formatChf(y.withdrawalFromEquity)}</td>
                 <td className="num">{formatChf(y.withdrawalFromBond)}</td>
+                {isHighWater && (
+                  <>
+                    <td className="num">{formatChf(y.highWaterMarkBefore)}</td>
+                    <td className="num">{formatChf(y.portfolioAfterReturn)}</td>
+                    <td className="num">{y.newGain > 0 ? formatChf(y.newGain) : '–'}</td>
+                  </>
+                )}
                 <td className="num">{reserveYearsOf(y.reserveBeforeRefill, y.capitalNeed)}</td>
+                <td className="num">{formatChf(Math.max(0, y.reserveTarget - y.reserveBeforeRefill))}</td>
+                <td className="num">{formatPercent(y.refillQuota, 0)}</td>
                 <td className="num">{y.refillAmount > 0 ? formatChf(y.refillAmount) : '–'}</td>
                 <td className="num strong">{reserveYearsOf(y.reserveEnd, y.capitalNeed)}</td>
+                {isHighWater && <td className="num">{formatChf(y.highWaterMarkAfter)}</td>}
                 <td title={y.rationale}>
                   {y.rebalanced ? 'ja' : 'nein'}
                   <span className="sub"> {Math.round(y.equityWeightAfterRebalance * 100)} %</span>

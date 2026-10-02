@@ -178,8 +178,12 @@ describe('M – Liquiditätsreserve', () => {
     for (const y of result.years) {
       const invested = y.equityStart + y.bondStart;
       if (invested > 0) {
+        // Stabile Definition: gewichtete Rendite aus den *gegebenen* Renditen
+        // (Gewichte aus den Startbeständen) – nicht "Ertrag / Startwert", weil
+        // dieser Rückweg Gleitkomma-Rauschen an der Schwelle erzeugt.
+        const equityShare = y.equityStart / invested;
         expect(y.portfolioReturn).toBeCloseTo(
-          (y.equityReturnChf + y.bondReturnChf) / invested,
+          equityShare * y.equityReturn + (1 - equityShare) * y.bondReturn,
           12,
         );
         // Als gewichteter Mittelwert liegt sie zwischen Aktien- und Bondrendite.
@@ -189,7 +193,7 @@ describe('M – Liquiditätsreserve', () => {
     }
   });
 
-  it('M14: die S4-Schwelle füllt nur nach Jahren über der Portfoliorendite auf', () => {
+  it('M14: die S4-Schwelle füllt ab der Portfoliorendite auf (≥)', () => {
     const s4 = buildStrategies(0.8, { reserveYears: 2 }).find((s) => s.id === 'S4')!;
     expect(s4.params.refillRule).toBe('portfolioAboveThreshold');
     expect(s4.params.refillThreshold).toBeCloseTo(0.07, 12);
@@ -197,7 +201,7 @@ describe('M – Liquiditätsreserve', () => {
     const result = runSimulation(refInput(), SCENARIO_BAD_YEARS, s4);
     let refills = 0;
     for (const y of result.years) {
-      if (y.portfolioReturn > 0.07) {
+      if (y.portfolioReturn >= 0.07 - 1e-9) {
         // Auffüllung erlaubt – die Reserve liegt danach auf dem Zielwert.
         expect(y.refillAmount, `Jahr ${y.year}`).toBeGreaterThan(0);
         refills++;

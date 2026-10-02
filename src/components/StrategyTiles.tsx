@@ -10,6 +10,10 @@ interface StrategyTilesProps {
   reserveYears: number;
   /** Refill rule per strategy id. */
   refillRules: Record<string, string>;
+  /** Currently focused strategy (optional). */
+  selectedId?: string;
+  /** Called when a tile is clicked (optional). */
+  onSelect?: (id: string) => void;
 }
 
 /**
@@ -18,9 +22,16 @@ interface StrategyTilesProps {
  * All strategies use the same reserve height (chosen in the "Ausgangslage");
  * they differ in how they *use* the reserve, so the tile shows the usage rule.
  * Each tile also shows the end capital and the change versus the starting
- * capital.
+ * capital. With {@link StrategyTilesProps.onSelect} the tiles act as a picker.
  */
-export function StrategyTiles({ results, visibleIds, reserveYears, refillRules }: StrategyTilesProps) {
+export function StrategyTiles({
+  results,
+  visibleIds,
+  reserveYears,
+  refillRules,
+  selectedId,
+  onSelect,
+}: StrategyTilesProps) {
   const shown = byStrategyOrder(results.filter((r) => visibleIds.has(r.strategyId)));
 
   return (
@@ -29,7 +40,7 @@ export function StrategyTiles({ results, visibleIds, reserveYears, refillRules }
         const card = strategyCard(r.strategyId);
         const delta = r.startCapital > 0 ? r.endCapital / r.startCapital - 1 : 0;
         const negative = delta < 0;
-        const isUser = r.strategyId === 'S4';
+        // Einheitliche Beschriftung: alle vier Kacheln nennen ihre Reserve-Regel.
         const usage = refillShortLabel(refillRules[r.strategyId] ?? '');
         // Delta colour adapts to the tile background for good contrast.
         const onDark = card.fg === '#ffffff';
@@ -40,16 +51,19 @@ export function StrategyTiles({ results, visibleIds, reserveYears, refillRules }
           : negative
             ? '#7f1d1d'
             : '#14532d';
+        const selected = selectedId === r.strategyId;
         return (
           <li
             key={r.strategyId}
-            className="strategy-tile"
+            className={`strategy-tile${selected ? ' selected' : ''}${onSelect ? ' clickable' : ''}`}
             style={{ background: card.bg, color: card.fg }}
+            onClick={onSelect ? () => onSelect(r.strategyId) : undefined}
+            aria-current={selected ? 'true' : undefined}
           >
             <span className="tile-id">{r.strategyId}</span>
-            <span className="tile-desc">{isUser ? 'Benutzerdefiniert' : usage}</span>
+            <span className="tile-desc">{usage}</span>
             <span className="tile-badge" style={{ background: card.soft }}>
-              {isUser ? usage : reserveLabel(reserveYears)}
+              {reserveLabel(reserveYears)}
             </span>
             <span className="tile-value">{formatChf(r.endCapital)}</span>
             <span className="tile-delta" style={{ color: deltaColor }}>

@@ -1,4 +1,4 @@
-export type AppMode = 'simulation' | 'comparison' | 'sources';
+export type AppMode = 'labor' | 'details' | 'einstellungen';
 
 interface ModeTabsProps {
   mode: AppMode;
@@ -6,15 +6,15 @@ interface ModeTabsProps {
 }
 
 const TABS: { id: AppMode; label: string }[] = [
-  { id: 'simulation', label: 'Simulation' },
-  { id: 'comparison', label: 'Szenariovergleich' },
-  { id: 'sources', label: 'Quellen' },
+  { id: 'labor', label: 'Labor' },
+  { id: 'details', label: 'Details' },
+  { id: 'einstellungen', label: 'Einstellungen' },
 ];
 
-/** Top-level navigation between the three views. */
+/** Hauptnavigation des Vermögenslabors: Labor · Details · Einstellungen. */
 export function ModeTabs({ mode, onChange }: ModeTabsProps) {
   return (
-    <nav className="mode-tabs" aria-label="Ansichten">
+    <nav className="mode-tabs" aria-label="Bereiche">
       {TABS.map((tab) => (
         <button
           key={tab.id}

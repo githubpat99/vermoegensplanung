@@ -1,13 +1,18 @@
 import type { MarketScenario } from '../engine/types';
 import type { SensitivityCell } from '../engine/sensitivity';
 import { formatChf } from './format';
+import { InfoBlock } from './InfoBlock';
 import { allocationLabel } from './SensitivityHeatmap';
-import { reserveLabel } from './strategyVisuals';
+import { formatYears, reserveLabel } from './strategyVisuals';
 
 interface SelectedCellPanelProps {
+  /** Aktive Rasterzelle – leer, wenn die Ausgangslage zwischen den Rasterpunkten liegt. */
   cell: SensitivityCell | undefined;
   scenarios: MarketScenario[];
-  onApply: () => void;
+  /** Aktuelle Aktienquote der Ausgangslage (für den Hinweis ausserhalb des Rasters). */
+  equityWeight: number;
+  /** Aktuelle Reservehöhe der Ausgangslage (für den Hinweis ausserhalb des Rasters). */
+  reserveYears: number;
 }
 
 function baseName(scenario: MarketScenario): string {
@@ -15,44 +20,59 @@ function baseName(scenario: MarketScenario): string {
 }
 
 /**
- * Detail for the currently selected heatmap cell: the strategy it stands for,
- * the average across all scenarios plus the per-scenario breakdown, and a
- * button that copies the combination into the simulation view.
+ * Aktive Ausgangslage des Strategieraums: welche Rasterzelle gerade gilt und
+ * welches Endvermögen sie im Durchschnitt erzielt.
+ *
+ * Die Aufschlüsselung je Marktphase liegt hinter „Je Marktphase“. Der Klick auf
+ * eine Zelle setzt die Ausgangslage (er öffnet **keine** Details), deshalb gibt
+ * es hier keinen zweiten Auslöser dafür.
  */
-export function SelectedCellPanel({ cell, scenarios, onApply }: SelectedCellPanelProps) {
-  if (!cell) return null;
+export function SelectedCellPanel({
+  cell,
+  scenarios,
+  equityWeight,
+  reserveYears,
+}: SelectedCellPanelProps) {
+  if (!cell) {
+    return (
+      <div className="selected-cell">
+        <p className="selected-cell-kicker">Aktive Ausgangslage</p>
+        <h3 className="selected-cell-title">
+          {allocationLabel(equityWeight)} · {reserveLabel(reserveYears)} Reserve
+        </h3>
+        <p className="hint">
+          Diese Ausgangslage liegt zwischen den Rasterpunkten des Strategieraums ({formatYears(reserveYears)}{' '}
+          Jahresbedarfe). Ein Tap auf eine Zelle setzt sie auf den Rasterwert.
+        </p>
+      </div>
+    );
+  }
 
   const strategy = `Strategie ${allocationLabel(cell.equityWeight)} · ${reserveLabel(cell.reserveYears)}`;
 
   return (
     <div className="selected-cell">
-      <p className="selected-cell-kicker">Gewählte Strategie</p>
+      <p className="selected-cell-kicker">Aktive Ausgangslage</p>
       <h3 className="selected-cell-title">{strategy}</h3>
-      <p className="hint">
-        {allocationLabel(cell.equityWeight)} Aktien / {100 - Math.round(cell.equityWeight * 100)}{' '}
-        Obligationen, {reserveLabel(cell.reserveYears)} Reserve · Durchschnitt über alle{' '}
-        {scenarios.length} Szenarien
-      </p>
       <p className="selected-cell-value">{formatChf(cell.averageEnd)}</p>
+      <p className="hint">Ø Endvermögen über {scenarios.length} Marktphasen</p>
 
-      <table className="selected-cell-table">
-        <caption className="sr-only">Ergebnis je Szenario</caption>
-        <tbody>
-          {scenarios.map((scenario) => {
-            const entry = cell.perScenario.find((p) => p.scenarioId === scenario.id);
-            return (
-              <tr key={scenario.id}>
-                <th scope="row">{baseName(scenario)}</th>
-                <td>{entry ? formatChf(entry.endCapital) : '–'}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-
-      <button type="button" className="btn-primary" onClick={onApply}>
-        Diese Kombination in Simulation anzeigen
-      </button>
+      <InfoBlock label="Je Marktphase">
+        <table className="selected-cell-table">
+          <caption className="sr-only">Ergebnis je Szenario</caption>
+          <tbody>
+            {scenarios.map((scenario) => {
+              const entry = cell.perScenario.find((p) => p.scenarioId === scenario.id);
+              return (
+                <tr key={scenario.id}>
+                  <th scope="row">{baseName(scenario)}</th>
+                  <td>{entry ? formatChf(entry.endCapital) : '–'}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </InfoBlock>
     </div>
   );
 }

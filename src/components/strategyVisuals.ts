@@ -53,11 +53,13 @@ export { REFILL_RULE_LABELS as REFILL_LABELS } from '../engine/strategies';
 
 /** Short label of a reserve-usage rule for tiles and column headers. */
 export const REFILL_SHORT_LABELS: Record<string, string> = {
-  never: 'Nur verbrauchen',
+  never: 'Reserve verbrauchen',
   always: 'Jährlich auffüllen',
   equityPositive: 'Nach guten Jahren',
   aboveStart: 'Über Startwert auffüllen',
   portfolioAboveThreshold: 'Nach Rendite-Schwelle',
+  portfolioTiered: 'Gestaffelt nach Rendite',
+  portfolioHighWater: 'Neue Höchststände',
 };
 
 /** Short usage label for a reserve-usage rule. */

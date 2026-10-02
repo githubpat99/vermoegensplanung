@@ -106,18 +106,66 @@ export interface MarketScenario {
  *  - `equityPositive`        – only after a year with a non-negative equity return.
  *  - `aboveStart`            – only while the total capital is above its start value.
  *  - `portfolioAboveThreshold` – only after a year whose *portfolio* return
- *                              (invested equity + bonds, weighted) exceeded the
- *                              configured threshold (S4).
+ *                              (invested equity + bonds, weighted) reached or
+ *                              exceeded the configured threshold (S4). The
+ *                              comparison is "≥" and carries a tolerance of
+ *                              {@link REFILL_THRESHOLD_EPSILON} so the boundary
+ *                              case does not depend on floating-point noise.
+ *  - `portfolioTiered`       – refill only a *share* of the missing reserve,
+ *                              staged by the realised portfolio return of the
+ *                              year (S4, see {@link DEFAULT_REFILL_TIERS}).
+ *  - `portfolioHighWater`     – refill only from a *new high* of the invested
+ *                              portfolio: the share is taken from the amount by
+ *                              which the portfolio exceeds its previous
+ *                              high-water mark (S4, see
+ *                              {@link DEFAULT_GAIN_SKIM_QUOTA}).
  */
 export type RefillRule =
   | 'always'
   | 'equityPositive'
   | 'never'
   | 'aboveStart'
-  | 'portfolioAboveThreshold';
+  | 'portfolioAboveThreshold'
+  | 'portfolioTiered'
+  | 'portfolioHighWater';
 
 /** Default threshold for {@link RefillRule} `portfolioAboveThreshold` (7 %). */
 export const DEFAULT_REFILL_THRESHOLD = 0.07;
+
+/** Default share of a new high-water gain that is skimmed (50 %). */
+export const DEFAULT_GAIN_SKIM_QUOTA = 0.5;
+
+/**
+ * Tolerance for the threshold comparison. Return series carry four decimals
+ * (1e-4), so 1e-9 can never merge two different data points – it only absorbs
+ * the rounding error of the weighted portfolio return.
+ */
+export const REFILL_THRESHOLD_EPSILON = 1e-9;
+
+/**
+ * One stage of the staged refill rule ({@link RefillRule} `portfolioTiered`).
+ *
+ * `upTo` is the **inclusive** upper bound of the portfolio return (decimal,
+ * 0.05 = 5 %); `quota` is the share of the missing reserve that is refilled
+ * within this stage (0.25 = 25 %). The first stage whose `upTo` is reached
+ * applies, so "≤ 5 %" gives 0 % and "> 5 % up to 10 %" gives 25 %.
+ */
+export interface RefillTier {
+  upTo: number;
+  quota: number;
+}
+
+/**
+ * Default stages of the staged refill rule:
+ *   ≤ 5 % → 0 %, > 5–10 % → 25 %, > 10–15 % → 50 %, > 15–20 % → 75 %, > 20 % → 100 %.
+ */
+export const DEFAULT_REFILL_TIERS: readonly RefillTier[] = [
+  { upTo: 0.05, quota: 0 },
+  { upTo: 0.1, quota: 0.25 },
+  { upTo: 0.15, quota: 0.5 },
+  { upTo: 0.2, quota: 0.75 },
+  { upTo: Number.POSITIVE_INFINITY, quota: 1 },
+];
 
 /**
  * Source of the bond return.
@@ -140,9 +188,18 @@ export interface StrategyParams {
   refillRule: RefillRule;
   /**
    * Threshold (decimal, e.g. 0.07 = 7 %) for the rule
-   * `portfolioAboveThreshold`. Falls back to {@link DEFAULT_REFILL_THRESHOLD}.
+   * `portfolioAboveThreshold`: the reserve is refilled when the portfolio
+   * return of the year is **greater than or equal to** this value (with
+   * {@link REFILL_THRESHOLD_EPSILON} tolerance). Falls back to
+   * {@link DEFAULT_REFILL_THRESHOLD}.
    */
   refillThreshold?: number;
+  /**
+   * Share of the new gain above the portfolio high-water mark that is moved
+   * into the reserve (rule `portfolioHighWater`, 0.5 = 50 %). Falls back to
+   * {@link DEFAULT_GAIN_SKIM_QUOTA}.
+   */
+  gainSkimQuota?: number;
   /**
    * Refill target in annual needs. `null`/absent = the reserve height chosen in
    * the "Ausgangslage" (used by S4 to top the reserve up to a different level).
@@ -180,9 +237,29 @@ export interface StrategyContext {
   /**
    * Return of the invested portfolio this year (decimal): the weighted return
    * of the equity and bond sleeves, before any withdrawal. This is the figure
-   * the S4 threshold rule reacts to.
+   * the S4 threshold rule reacts to. It is computed from the *given* returns
+   * (weights from the start balances) so that a return which exactly equals the
+   * threshold is reproduced exactly.
    */
   portfolioReturn: number;
+  /**
+   * Invested portfolio (equity + bonds) **after** this year's returns, i.e.
+   * before the withdrawal and before any refill. This is the observation point
+   * of the high-water mark.
+   */
+  portfolioAfterReturn: number;
+  /**
+   * Highest invested-portfolio value reached through the **end of the previous
+   * year** (the value at the start of the simulation counts as the first mark).
+   * It is never lowered – neither by spending nor by a refill.
+   */
+  portfolioHighWaterMark: number;
+  /**
+   * Amount by which {@link portfolioAfterReturn} exceeds
+   * {@link portfolioHighWaterMark} (0 when the old high is not exceeded). Only
+   * this genuinely new gain may be skimmed by the high-water rule.
+   */
+  portfolioNewGain: number;
   /** Equity returns of all years up to and including the current one. */
   equityReturnHistory: number[];
 }
@@ -193,6 +270,18 @@ export interface StrategyDecision {
   reserveTarget: number;
   /** Whether the reserve may be replenished this year. */
   refill: boolean;
+  /**
+   * Share of the *missing* reserve (target − reserve) that is refilled this
+   * year: 1 = fill the gap completely, 0.5 = half of it. Used by the staged
+   * rule; all other rules fill the gap completely.
+   */
+  refillQuota: number;
+  /**
+   * CHF base the quota applies to. Omitted = the missing reserve
+   * (target − reserve). The high-water rule passes the new gain above the
+   * high-water mark here.
+   */
+  refillBase?: number;
   /** Target equity weight for this year's rebalancing (0..1). */
   equityWeight: number;
   /** Whether the invested portfolio is rebalanced this year. */
@@ -250,6 +339,26 @@ export interface YearResult {
   refillAmount: number;
   /** Reserve level (CHF) the strategy aimed for this year. */
   reserveTarget: number;
+  /**
+   * CHF base the applied quota refers to: the missing reserve for the top-up
+   * rules, the new gain above the high-water mark for the high-water rule.
+   */
+  refillBase: number;
+  /**
+   * Share of {@link refillBase} that was actually refilled this year
+   * (0 = no refill, 0.5 = half of the base, 1 = base used up completely).
+   * Differs from the configured share only if the reserve target or the
+   * invested portfolio limited the transfer.
+   */
+  refillQuota: number;
+  /** Invested portfolio (equity + bonds) after this year's returns. */
+  portfolioAfterReturn: number;
+  /** High-water mark in force at the start of the year (peak through the previous year). */
+  highWaterMarkBefore: number;
+  /** High-water mark after this year's observation (never lowered). */
+  highWaterMarkAfter: number;
+  /** New gain above {@link highWaterMarkBefore} (0 when the old high holds). */
+  newGain: number;
   rebalanced: boolean;
   equityWeightAfterRebalance: number;
   equityEnd: number;
@@ -267,6 +376,8 @@ export interface StrategyResult {
   strategyId: string;
   strategyName: string;
   strategyShortName: string;
+  /** Refill rule this strategy was run with (for the yearly-detail view). */
+  refillRule: RefillRule;
   /** Liquidity reserve target of this strategy, expressed in annual needs. */
   reserveYears: number;
   input: SimulationInput;

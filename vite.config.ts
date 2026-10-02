@@ -7,6 +7,19 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   base: './',
+  // Feste Ports: `vite` läuft immer auf 5173, `vite preview` immer auf 4173.
+  // Ohne `strictPort` weicht Vite bei belegtem Port still auf 5174/4174 aus –
+  // dann sucht man die App auf der falschen Adresse.
+  server: {
+    host: 'localhost',
+    port: 5173,
+    strictPort: true,
+  },
+  preview: {
+    host: 'localhost',
+    port: 4173,
+    strictPort: true,
+  },
   build: {
     outDir: 'dist',
     sourcemap: true,

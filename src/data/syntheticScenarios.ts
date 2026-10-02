@@ -25,6 +25,14 @@ export const SYNTHETIC_EQUITY_ZIGZAG: number[] = [
   -0.15, 0.12, -0.12, 0.1, -0.1, 0.12, -0.08, 0.1, -0.12, 0.14, -0.08, 0.11, -0.1, 0.13, -0.07,
 ];
 
+/**
+ * Crash erst nach Verbrauch der Anfangsreserve: mehrere stabile Jahre, danach
+ * ein mehrjähriger Einbruch (Jahre 5–8) und eine anschliessende Erholung.
+ */
+export const SYNTHETIC_EQUITY_CRASH_AFTER_RESERVE: number[] = [
+  0.1, 0.08, 0.06, 0.05, -0.1, -0.25, -0.35, -0.12, 0.18, 0.25, 0.15, 0.1, 0.08, 0.07, 0.06,
+];
+
 const DEFAULT_BOND = HISTORICAL_BOND_SEQUENCES[0];
 
 function baseScenario(
@@ -70,10 +78,18 @@ export const SCENARIO_ZIGZAG: MarketScenario = baseScenario(
   SYNTHETIC_EQUITY_ZIGZAG,
 );
 
+export const SCENARIO_CRASH_AFTER_RESERVE: MarketScenario = baseScenario(
+  'syn-crash-after-reserve',
+  'Crash nach Reserveverbrauch · Modellszenario',
+  'Mehrere zunächst stabile Jahre, danach ein starker mehrjähriger Einbruch. Testet insbesondere das Risiko eines Crashs nach Verbrauch der anfänglichen Liquiditätsreserve.',
+  SYNTHETIC_EQUITY_CRASH_AFTER_RESERVE,
+);
+
 export const SYNTHETIC_SCENARIOS: MarketScenario[] = [
   SCENARIO_CRASH_EARLY,
   SCENARIO_CRASH_LATE,
   SCENARIO_ZIGZAG,
+  SCENARIO_CRASH_AFTER_RESERVE,
 ];
 
 /**

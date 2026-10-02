@@ -1,7 +1,7 @@
 {
-  "name": "Entnahme-Stresstest",
-  "short_name": "Entnahme-Test",
-  "description": "Simuliere und vergleiche Entnahmestrategien in der Pensionierungsphase gegen historische und theoretische Marktszenarien.",
+  "name": "Vermögenslabor",
+  "short_name": "Vermögenslabor",
+  "description": "Simuliere und vergleiche Anlage-, Reserve- und Entnahmestrategien für dein Vermögen in unterschiedlichen Marktphasen.",
   "lang": "de-CH",
   "dir": "ltr",
   "start_url": "./",

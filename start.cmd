@@ -3,7 +3,7 @@ setlocal enableextensions
 chcp 65001 >nul
 
 REM ============================================================
-REM  Entnahme-Stresstest - Starter (Doppelklick)
+REM  Vermoegenslabor - Starter (Doppelklick)
 REM  Sucht Node.js (echtes Node oder portable Version),
 REM  installiert bei Bedarf die Abhaengigkeiten und startet
 REM  den Vite-Dev-Server inklusive Browser.

@@ -1,4 +1,5 @@
 import type { SimulationInput } from '../engine/types';
+import { DraftNumberInput, parseMoneyInput } from './DraftNumberInput';
 import { formatChfInput } from './format';
 import { ReserveComposition } from './ReserveComposition';
 
@@ -16,11 +17,6 @@ interface ReserveInputProps {
   onChange: (patch: Partial<SimulationInput>) => void;
   /** Extra sentence for the composition footnote. */
   note?: string;
-}
-
-function parseMoney(value: string, fallback: number): number {
-  const parsed = Number(value.replace(/[^0-9-]/g, ''));
-  return Number.isFinite(parsed) ? parsed : fallback;
 }
 
 /** The reserve in CHF for the current mode. */
@@ -89,14 +85,13 @@ export function ReserveInput({
           <span className="field-label">Reserve</span>
           <span className="input-prefixed">
             <span className="prefix">CHF</span>
-            <input
-              type="text"
+            <DraftNumberInput
+              value={input.liquidityReserve}
+              format={formatChfInput}
+              parse={parseMoneyInput}
+              onCommit={(v) => onChange({ liquidityReserve: v })}
+              ariaLabel="Reserve in CHF"
               inputMode="numeric"
-              aria-label="Reserve in CHF"
-              value={formatChfInput(input.liquidityReserve)}
-              onChange={(e) =>
-                onChange({ liquidityReserve: parseMoney(e.target.value, input.liquidityReserve) })
-              }
             />
           </span>
         </label>

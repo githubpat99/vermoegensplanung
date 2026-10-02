@@ -50,8 +50,8 @@ export function RobustnessTable({ columns, metrics, onOpenStrategy }: Robustness
                       type="button"
                       className="robustness-cell"
                       onClick={() => onOpenStrategy(c.id)}
-                      aria-label={`${c.id} · ${row.label}: ${row.render(metrics[c.id])} – öffnet das Ergebnis in der Simulation`}
-                      title={`${c.id} – Klick zeigt das Ergebnis in der Simulation`}
+                      aria-label={`${c.id} · ${row.label}: ${row.render(metrics[c.id])} – öffnet die Details zur Strategie`}
+                      title={`${c.id} – Klick öffnet die Details`}
                     >
                       {row.render(metrics[c.id])}
                     </button>

@@ -48,6 +48,7 @@ export function summarize(
     strategyId: strategy.id,
     strategyName: strategy.name,
     strategyShortName: strategy.shortName,
+    refillRule: strategy.params.refillRule,
     reserveYears: strategy.params.reserveYears,
     input,
     scenarioId: scenario.id,

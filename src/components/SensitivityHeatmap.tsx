@@ -9,8 +9,9 @@ import { reserveLabel } from './strategyVisuals';
 
 interface SensitivityHeatmapProps {
   cells: SensitivityCell[];
-  selectedEquity: number;
-  selectedReserve: number;
+  /** Aktive Ausgangslage – nur markiert, wenn sie genau auf dem Raster liegt. */
+  selectedEquity?: number;
+  selectedReserve?: number;
   onSelect: (equityWeight: number, reserveYears: number) => void;
 }
 
@@ -18,17 +19,6 @@ interface SensitivityHeatmapProps {
 export function allocationLabel(weight: number): string {
   const eq = Math.round(weight * 100);
   return `${eq}/${100 - eq}`;
-}
-
-/** Compact CHF label, e.g. "1.87 Mio". */
-function compactChf(value: number): string {
-  if (Math.abs(value) >= 1_000_000) {
-    return `${(value / 1_000_000).toFixed(2).replace('.', ',')} Mio`;
-  }
-  if (Math.abs(value) >= 1_000) {
-    return `${Math.round(value / 1_000)} Tsd`;
-  }
-  return `${Math.round(value)}`;
 }
 
 /**
@@ -96,7 +86,11 @@ export function SensitivityHeatmap({
                 const cell = findCell(cells, eq, ry);
                 if (!cell) return <td key={ry}>–</td>;
                 const { bg, fg } = heatColor(cell.averageEnd, min, max);
-                const selected = Math.abs(eq - selectedEquity) < 1e-9 && ry === selectedReserve;
+                const selected =
+                  selectedEquity !== undefined &&
+                  selectedReserve !== undefined &&
+                  Math.abs(eq - selectedEquity) < 1e-9 &&
+                  ry === selectedReserve;
                 const strategy = `Strategie ${allocationLabel(eq)} · ${reserveLabel(ry)}`;
                 return (
                   <td key={ry} className="heat-cell-td">
@@ -106,10 +100,10 @@ export function SensitivityHeatmap({
                       style={{ background: bg, color: fg }}
                       onClick={() => onSelect(eq, ry)}
                       aria-pressed={selected}
-                      aria-label={`${strategy}: ${compactChf(cell.averageEnd)} Endvermögen (Durchschnitt über alle Szenarien) – öffnet das Ergebnis in der Simulation`}
-                      title={`${strategy} – ${formatChf(cell.averageEnd)} Endvermögen · Klick zeigt das Ergebnis in der Simulation`}
+                      aria-label={`${strategy}: ${formatChf(cell.averageEnd)} Endvermögen (Durchschnitt über alle Szenarien) – setzt diese Ausgangslage, das Labor bleibt stehen`}
+                      title={`${strategy} – ${formatChf(cell.averageEnd)} Endvermögen · Klick setzt diese Ausgangslage (Aktienquote ${allocationLabel(eq)}, Reserve ${reserveLabel(ry)})`}
                     >
-                      {compactChf(cell.averageEnd)}
+                      {formatChf(cell.averageEnd)}
                     </button>
                   </td>
                 );

@@ -6,23 +6,21 @@ interface StrategyColumnHeaderProps {
 }
 
 /**
- * Column header for the comparison tables:
- *   S1                 S4
- *   Nur verbrauchen    Benutzerdefiniert
- *   (2 Jahresbedarfe)  (Über Startwert auffüllen)
+ * Spaltenkopf der Vergleichstabellen – kompakt und für alle vier Strategien
+ * gleich aufgebaut:
+ *
+ *   S1                    S4
+ *   Reserve verbrauchen   Neue Höchststände
+ *   (2 Jahresbedarfe)     (2 Jahresbedarfe)
  */
 export function StrategyColumnHeader({ column }: StrategyColumnHeaderProps) {
-  const isUser = column.id === 'S4';
   const color = strategyColor(column.id);
+  const rule = refillShortLabel(column.refillRule);
   return (
     <th scope="col" className="strategy-col-head" style={{ background: color }}>
       <span className="col-id">{column.id}</span>
-      <span className="col-sub">
-        {isUser ? column.name : refillShortLabel(column.refillRule)}
-      </span>
-      <span className="col-sub-2">
-        ({isUser ? refillShortLabel(column.refillRule) : reserveLabel(column.reserveYears)})
-      </span>
+      <span className="col-sub">{rule}</span>
+      <span className="col-sub-2">({reserveLabel(column.reserveYears)})</span>
     </th>
   );
 }

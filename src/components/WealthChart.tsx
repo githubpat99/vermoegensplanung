@@ -6,6 +6,10 @@ import { byStrategyOrder, reserveLabel, strategyColor } from './strategyVisuals'
 interface WealthChartProps {
   results: StrategyResult[];
   visibleIds: Set<string>;
+  /** Currently focused year (highlighted); optional. */
+  selectedYear?: number | null;
+  /** Called when a year is clicked in the chart. */
+  onSelectYear?: (year: number) => void;
 }
 
 const W = 700;
@@ -20,7 +24,7 @@ type Metric = 'total' | 'invested';
  * Colours and order are fixed per strategy (S1..S4). A small selector switches
  * between total wealth and the invested part (equities + bonds).
  */
-export function WealthChart({ results, visibleIds }: WealthChartProps) {
+export function WealthChart({ results, visibleIds, selectedYear, onSelectYear }: WealthChartProps) {
   const [metric, setMetric] = useState<Metric>('total');
   const shown = byStrategyOrder(results.filter((r) => visibleIds.has(r.strategyId)));
   const years = shown[0]?.years ?? [];
@@ -48,7 +52,7 @@ export function WealthChart({ results, visibleIds }: WealthChartProps) {
   return (
     <div className="wealth-chart">
       <div className="chart-head">
-        <h3>Vermögensverlauf über {years.length} Jahre</h3>
+        {/* Kein eigener Titel: der Abschnitt heisst bereits „Vermögensverlauf über N Jahre“. */}
         <select
           className="chart-select"
           value={metric}
@@ -88,7 +92,15 @@ export function WealthChart({ results, visibleIds }: WealthChartProps) {
               <g key={r.strategyId}>
                 <path d={d} fill="none" stroke={color} strokeWidth={2.6} strokeLinejoin="round" />
                 {r.years.map((yy, i) => (
-                  <circle key={i} cx={x(i)} cy={y(value(r, i))} r={2.6} fill={color}>
+                  <circle
+                    key={i}
+                    cx={x(i)}
+                    cy={y(value(r, i))}
+                    r={selectedYear === yy.year ? 4.6 : 2.6}
+                    fill={color}
+                    className="chart-point"
+                    onClick={onSelectYear ? () => onSelectYear(yy.year) : undefined}
+                  >
                     <title>{`${r.strategyId} · ${yy.year}: ${formatChf(value(r, i))}`}</title>
                   </circle>
                 ))}

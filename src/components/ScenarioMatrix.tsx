@@ -1,7 +1,7 @@
 import type { MarketScenario } from '../engine/types';
 import { formatChf } from './format';
 import { StrategyColumnHeader } from './StrategyColumnHeader';
-import { IconTrend, IconTrendDown } from './icons';
+import { ScenarioIcon, scenarioTone } from './scenarioVisuals';
 import type { StrategyColumn } from './strategyVisuals';
 
 interface ScenarioMatrixProps {
@@ -54,7 +54,6 @@ export function ScenarioMatrix({
           {scenarios.map((scenario) => {
             const values = columns.map((c) => matrix[c.id]?.[scenario.id] ?? 0);
             const best = Math.max(...values);
-            const isSynthetic = scenario.type === 'synthetic';
             return (
               <tr
                 key={scenario.id}
@@ -62,8 +61,8 @@ export function ScenarioMatrix({
                 onClick={() => onSelectScenario(scenario.id)}
               >
                 <th scope="row" className="matrix-scenario">
-                  <span className={isSynthetic ? 'matrix-icon model' : 'matrix-icon hist'}>
-                    {isSynthetic ? <IconTrend size={16} /> : <IconTrendDown size={16} />}
+                  <span className={`matrix-icon ${scenarioTone(scenario)}`}>
+                    <ScenarioIcon scenario={scenario} size={16} />
                   </span>
                   <span className="matrix-label">
                     <span className="matrix-name">{baseName(scenario)}</span>
@@ -79,8 +78,8 @@ export function ScenarioMatrix({
                         e.stopPropagation();
                         onOpenScenario(scenario.id, c.id);
                       }}
-                      aria-label={`${baseName(scenario)} · ${c.id}: ${formatChf(values[i])} Endvermögen – öffnet das Ergebnis in der Simulation`}
-                      title={`${baseName(scenario)} · ${c.id} – Klick zeigt das Ergebnis in der Simulation`}
+                      aria-label={`${baseName(scenario)} · ${c.id}: ${formatChf(values[i])} Endvermögen${values[i] === best ? ' (höchstes Endvermögen in diesem Marktszenario)' : ''} – öffnet die Details`}
+                      title={`${baseName(scenario)} · ${c.id}${values[i] === best ? ' · höchstes Endvermögen in diesem Marktszenario' : ''} – Klick öffnet die Details`}
                     >
                       {formatChf(values[i])}
                     </button>

@@ -1,25 +1,13 @@
 import type { SimulationInput } from '../engine/types';
+import { DraftNumberInput, parseMoneyInput } from './DraftNumberInput';
 import { formatChfInput } from './format';
 
-interface BaseInputsProps {
-  input: SimulationInput;
-  onChange: (patch: Partial<SimulationInput>) => void;
-  /** Hide the CHF prefix to keep the row compact. */
-  compact?: boolean;
-}
-
-/** Parse a formatted money string back to a number. */
-function parseMoney(value: string, fallback: number): number {
-  const cleaned = value.replace(/[^0-9-]/g, '');
-  const parsed = Number(cleaned);
-  return Number.isFinite(parsed) ? parsed : fallback;
-}
-
-function MoneyField({
+/** A CHF field with the "CHF" prefix (shared by all input panels). */
+export function MoneyField({
   label,
   value,
   onChange,
-  showPrefix,
+  showPrefix = true,
 }: {
   label: string;
   value: number;
@@ -31,24 +19,30 @@ function MoneyField({
       <span className="field-label">{label}</span>
       <span className="input-prefixed">
         {showPrefix && <span className="prefix">CHF</span>}
-        <input
-          type="text"
+        <DraftNumberInput
+          value={value}
+          format={formatChfInput}
+          parse={parseMoneyInput}
+          onCommit={onChange}
           inputMode="numeric"
-          value={formatChfInput(value)}
-          onChange={(e) => onChange(parseMoney(e.target.value, value))}
         />
       </span>
     </label>
   );
 }
 
+interface BaseInputsProps {
+  input: SimulationInput;
+  onChange: (patch: Partial<SimulationInput>) => void;
+}
+
 /**
- * The inputs that are identical for every strategy and every scenario:
- * starting assets, annual need, equity/bond split and rebalancing.
- * The liquidity reserve is intentionally NOT part of this (it belongs to the
- * strategy, not to the base situation).
+ * Die Eingaben, die für jede Strategie und jedes Szenario identisch sind:
+ * Startvermögen, jährlicher Kapitalbedarf, Aktien-/Obligationen-Aufteilung und
+ * Rebalancing. Die Liquiditätsreserve gehört bewusst nicht dazu (sie wird in
+ * der Ausgangslage separat und für alle Strategien gemeinsam gesetzt).
  */
-export function BaseInputs({ input, onChange, compact = false }: BaseInputsProps) {
+export function BaseInputs({ input, onChange }: BaseInputsProps) {
   const eqPct = Math.round(input.equityAllocation * 100);
   const bdPct = 100 - eqPct;
 
@@ -58,13 +52,11 @@ export function BaseInputs({ input, onChange, compact = false }: BaseInputsProps
         <MoneyField
           label="Startvermögen"
           value={input.initialCapital}
-          showPrefix={!compact}
           onChange={(v) => onChange({ initialCapital: v })}
         />
         <MoneyField
           label="Jährlicher Kapitalbedarf"
           value={input.annualNeed}
-          showPrefix={!compact}
           onChange={(v) => onChange({ annualNeed: v })}
         />
       </div>

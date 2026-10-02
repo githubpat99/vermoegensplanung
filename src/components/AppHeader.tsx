@@ -18,8 +18,8 @@ export function AppHeader({ mode, onModeChange }: AppHeaderProps) {
     <header className="app-header">
       <img className="app-logo" src="./Vermögens_Icon.png" alt="" width={48} height={48} />
       <div className="app-header-text">
-        <h1>Entnahme-Stresstest</h1>
-        <p>Wie robust ist deine Entnahmestrategie?</p>
+        <h1>Vermögenslabor</h1>
+        <p>Teste, wie dein Vermögen durch Marktphasen kommt.</p>
       </div>
       <ModeTabs mode={mode} onChange={onModeChange} />
       <button
@@ -34,8 +34,8 @@ export function AppHeader({ mode, onModeChange }: AppHeaderProps) {
 
       {showInfo && (
         <p className="app-header-note">
-          Keine Anlageempfehlung. Die App simuliert Strategien transparent und vergleichbar und
-          beantwortet die Frage: „Was wäre mit meinem Vermögen passiert?“.
+          Es simuliert transparent, wie unterschiedliche Anlage-, Reserve- und Entnahmestrategien
+          unter verschiedenen Marktverläufen gewirkt hätten.
         </p>
       )}
     </header>

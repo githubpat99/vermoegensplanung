@@ -101,6 +101,15 @@ export function IconLayers(p: IconProps) {
   );
 }
 
+/** Zigzag line – neutral / sideways model scenarios. */
+export function IconZigzag(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <path d="M3.5 15.5 7 9l3 4.5L13.5 6l3.2 6L20.5 8.5" />
+    </svg>
+  );
+}
+
 /** Chevron pointing down. */
 export function IconChevronDown(p: IconProps) {
   return (

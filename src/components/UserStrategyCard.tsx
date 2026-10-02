@@ -1,71 +1,63 @@
-import type { RefillRule, StrategyParams } from '../engine/types';
-import { DEFAULT_REFILL_THRESHOLD } from '../engine/types';
-import { REFILL_RULE_LABELS, formatThreshold } from '../engine/strategies';
-import { formatYears, reserveLabel, strategyColor } from './strategyVisuals';
+import type { StrategyParams } from '../engine/types';
+import { DEFAULT_GAIN_SKIM_QUOTA } from '../engine/types';
+import { DraftNumberInput } from './DraftNumberInput';
+import { InfoBlock } from './InfoBlock';
+import { formatSkimInput, formatYearsInput, parseSkimInput, parseYearsInput } from './numberInputs';
+import { formatChf } from './format';
+import { reserveLabel } from './strategyVisuals';
+
+export {
+  formatPercentInput,
+  formatSkimInput,
+  formatYearsInput,
+  parsePercentInput,
+  parseSkimInput,
+  parseYearsInput,
+} from './numberInputs';
+
+/**
+ * Produktstandard der Experimentierstrategie S4 im Vermögenslabor:
+ * Gewinne bei neuen Höchstständen sichern, 13 % davon in die Reserve.
+ * (Die übrigen Auffüllregeln bleiben in der Engine für Tests und spätere
+ * Experimente erhalten, sind im Labor aber nicht mehr auswählbar.)
+ */
+export const S4_DEFAULTS: Partial<StrategyParams> = {
+  refillRule: 'portfolioHighWater',
+  gainSkimQuota: 0.13,
+};
 
 interface UserStrategyCardProps {
   /** Reserve height (annual needs) shared by every strategy – from "Ausgangslage". */
   reserveYears: number;
-  /** Reserve height S4 tops up to (defaults to {@link reserveYears}). */
+  /** Reserve height S4 tops up to. */
   targetYears: number;
   userParams: Partial<StrategyParams>;
   onUserParamsChange: (patch: Partial<StrategyParams>) => void;
 }
 
-/** Format a percentage value for the compact inputs, e.g. 7 → "7,0". */
-function formatPercentValue(fraction: number): string {
-  return (fraction * 100).toFixed(1).replace('.', ',');
-}
-
-/** Parse a percentage input ("7,0" / "7") back to a decimal fraction. */
-function parsePercentValue(value: string, fallback: number): number {
-  const parsed = Number(value.replace(/[^0-9.,-]/g, '').replace(',', '.'));
-  if (!Number.isFinite(parsed)) return fallback;
-  return Math.min(0.5, Math.max(0, parsed / 100));
-}
-
-/** Parse a "years" input ("3" / "2,5") and clamp it to 0…6. */
-function parseYearsValue(value: string, fallback: number): number {
-  const parsed = Number(value.replace(/[^0-9.,-]/g, '').replace(',', '.'));
-  if (!Number.isFinite(parsed)) return fallback;
-  return Math.min(6, Math.max(0, parsed));
+/** Anteil als Prozenttext, z. B. 0.13 → "13 %", 0.125 → "12,5 %". */
+export function formatSkimPercent(fraction: number): string {
+  return `${formatSkimInput(fraction)} %`;
 }
 
 /**
- * Summary of the currently active S4 rule, e.g.
- * „3 Jahresbedarfe Reserve · ⅓ Geldmarkt / ⅔ Obligationen · nach Jahren >7,0 %
- * wieder auf 3 Jahresbedarfe auffüllen.“
+ * Erklärsatz zur Höchststand-Regel – mit den aktuell eingestellten Werten.
  */
-export function activeRuleSummary(args: {
-  reserveYears: number;
-  targetYears: number;
-  refillRule: RefillRule;
-  refillThreshold: number;
-}): string {
-  const { reserveYears, targetYears, refillRule, refillThreshold } = args;
-  const head = `${reserveLabel(reserveYears)} Reserve · ⅓ Geldmarkt / ⅔ Obligationen`;
-  const target = reserveLabel(targetYears);
-
-  switch (refillRule) {
-    case 'never':
-      return `${head} · Reserve wird nie wieder aufgefüllt.`;
-    case 'always':
-      return `${head} · jährlich wieder auf ${target} auffüllen.`;
-    case 'equityPositive':
-      return `${head} · nach Jahren mit positiver Aktienrendite wieder auf ${target} auffüllen.`;
-    case 'aboveStart':
-      return `${head} · nur oberhalb des Startvermögens wieder auf ${target} auffüllen.`;
-    case 'portfolioAboveThreshold':
-      return `${head} · nach Jahren >${formatThreshold(refillThreshold)} wieder auf ${target} auffüllen.`;
-  }
+export function highWaterExplanation(gainSkimQuota: number): string {
+  return (
+    `Erreicht das Portfolio einen neuen Höchststand, werden ${formatSkimPercent(gainSkimQuota)} ` +
+    'des Betrags über dem bisherigen Höchststand in die Reserve verschoben. ' +
+    'Kein neues Hoch → keine Auffüllung.'
+  );
 }
 
 /**
- * Compact configuration card for the user-defined strategy S4.
+ * S4 · Gewinne bei neuen Höchstständen sichern.
  *
- * The reserve height comes from the "Ausgangslage" (same for S1–S3); S4 adds
- * the two values that make its rule concrete: the return threshold that
- * triggers a refill and the reserve level it tops up to.
+ * Bewusst ohne Regelauswahl: Die drei Referenzstrategien S1–S3 decken die
+ * einfachen Auffüllregeln ab; S4 ist die Experimentierstrategie mit der
+ * High-Water-Mark-Logik. Konfigurierbar sind nur die zwei Werte, die diese
+ * Regel braucht.
  */
 export function UserStrategyCard({
   reserveYears,
@@ -73,82 +65,74 @@ export function UserStrategyCard({
   userParams,
   onUserParamsChange,
 }: UserStrategyCardProps) {
-  const refillRule: RefillRule = userParams.refillRule ?? 'portfolioAboveThreshold';
-  const threshold = userParams.refillThreshold ?? DEFAULT_REFILL_THRESHOLD;
+  const gainSkimQuota = userParams.gainSkimQuota ?? DEFAULT_GAIN_SKIM_QUOTA;
+  // Beispielwerte für den aufklappbaren Rechenweg.
+  const exampleHigh = 1_000_000;
+  const exampleNew = 1_100_000;
+  const exampleGain = exampleNew - exampleHigh;
+  const exampleSkim = exampleGain * gainSkimQuota;
 
   return (
     <div className="user-card">
-      <div className="user-card-head">
-        <span className="user-card-dot" style={{ background: strategyColor('S4') }} />
-        <strong>S4 · Benutzerdefiniert</strong>
-        <label className="inline-select user-card-rule">
-          <span>Auffüllregel</span>
-          <select
-            value={refillRule}
-            onChange={(e) => onUserParamsChange({ refillRule: e.target.value as RefillRule })}
-          >
-            {Object.entries(REFILL_RULE_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
       <div className="user-card-rows">
         <label className="user-card-row">
-          <span className="user-card-label">Reserve</span>
-          <span className="user-card-value">
-            {reserveLabel(reserveYears)}
-            <span className="user-card-note">aus der Ausgangslage</span>
+          <span className="user-card-label">Von neuen Gewinnen in Reserve</span>
+          <span className="user-card-input">
+            <DraftNumberInput
+              value={gainSkimQuota}
+              format={formatSkimInput}
+              parse={parseSkimInput}
+              onCommit={(v) => onUserParamsChange({ gainSkimQuota: v })}
+              ariaLabel="Von neuen Gewinnen in Reserve (Prozent)"
+            />
+            <span className="user-card-unit">%</span>
           </span>
         </label>
 
-        {refillRule === 'portfolioAboveThreshold' && (
-          <label className="user-card-row">
-            <span className="user-card-label">Auffüllen: bei Portfoliorendite &gt;</span>
-            <span className="user-card-input">
-              <input
-                type="text"
-                inputMode="decimal"
-                aria-label="Auffüllschwelle in Prozent Portfoliorendite"
-                value={formatPercentValue(threshold)}
-                onChange={(e) =>
-                  onUserParamsChange({ refillThreshold: parsePercentValue(e.target.value, threshold) })
-                }
-              />
-              <span className="user-card-unit">%</span>
-            </span>
-          </label>
-        )}
-
         <label className="user-card-row">
-          <span className="user-card-label">Zielreserve</span>
+          <span className="user-card-label">Reserve auffüllen bis</span>
           <span className="user-card-input">
-            <input
-              type="text"
-              inputMode="decimal"
-              aria-label="Zielreserve in Jahresbedarfen"
-              value={formatYears(targetYears)}
-              onChange={(e) =>
-                onUserParamsChange({ targetReserveYears: parseYearsValue(e.target.value, targetYears) })
-              }
+            <DraftNumberInput
+              value={targetYears}
+              format={formatYearsInput}
+              parse={parseYearsInput}
+              onCommit={(v) => onUserParamsChange({ targetReserveYears: v })}
+              ariaLabel="Reserve auffüllen bis (Jahresbedarfe)"
             />
             <span className="user-card-unit">Jahresbedarfe</span>
           </span>
         </label>
       </div>
 
-      <p className="user-card-summary">
-        <strong>Aktive Regel:</strong>{' '}
-        {activeRuleSummary({
-          reserveYears,
-          targetYears,
-          refillRule,
-          refillThreshold: threshold,
-        })}
-      </p>
+      <InfoBlock label="So funktioniert's">
+        <p className="hint">{highWaterExplanation(gainSkimQuota)}</p>
+        <ul className="s4-example-list" role="list">
+          <li>
+            <span>Bisheriges Portfoliohoch</span>
+            <span>CHF {formatChf(exampleHigh)}</span>
+          </li>
+          <li>
+            <span>Neuer Portfoliohöchststand</span>
+            <span>CHF {formatChf(exampleNew)}</span>
+          </li>
+          <li>
+            <span>Neuer Gewinn</span>
+            <span>CHF {formatChf(exampleGain)}</span>
+          </li>
+          <li>
+            <span>Bei {formatSkimPercent(gainSkimQuota)} davon in die Reserve</span>
+            <span>CHF {formatChf(exampleSkim)}</span>
+          </li>
+          <li>
+            <span>Reserve heute ({reserveLabel(reserveYears)})</span>
+            <span>aufgefüllt bis höchstens {reserveLabel(targetYears)}</span>
+          </li>
+        </ul>
+        <p className="hint">
+          Die Reserve wird höchstens bis zur eingestellten Zielreserve aufgefüllt. Der Transfer ist
+          eine reine Umschichtung: investiertes Portfolio −X, Reserve +X, Gesamtvermögen unverändert.
+        </p>
+      </InfoBlock>
     </div>
   );
 }
